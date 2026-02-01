@@ -1,105 +1,190 @@
-# Secure Load Balanced Web App on AWS
+# Secure AWS Load Balancer with Autoscaling & Custom Domain
 
-This project deploys a secure, highly available 2-tier web architecture using Terraform. It provisions a custom VPC, Public/Private subnets, an Application Load Balancer (ALB), and private EC2 instances running Apache Web Server.
+This project automates the deployment of a highly available, secure, and scalable web application infrastructure on AWS using Terraform. It includes a custom domain, SSL termination, and autoscaling capabilities.
 
-## 🏗 Architecture
+## 🌟 High-Level Architecture
 
-The architecture follows AWS best practices for security and high availability:
+This diagram illustrates the overall architecture, from user request to backend processing.
 
-- **VPC**: A custom Virtual Private Cloud (`10.0.0.0/16`) to isolate resources.
-- **Public Subnets**: Host the **Application Load Balancer (ALB)**, **NAT Gateway**, and **Bastion Host**.
-  - _Role_: Internet-facing entry points.
-- **Private Subnets**: Host the **Application Instances** (Web Servers).
-  - _Role_: Secure processing layer. No direct internet access (ingress). Outbound access via NAT Gateway.
-- **Security Groups**: Chained rules to enforce traffic flow:
-  - `ALB SG`: Allows HTTP (80) from Anywhere (`0.0.0.0/0`).
-  - `Bastion SG`: Allows SSH (22) from User IPs.
-  - `App SG`: Allows HTTP _only_ from `ALB SG` and SSH _only_ from `Bastion SG`.
+![AWS Architecture Diagram](aws_architecture_diagram.png)
 
-### Traffic Flow Diagram
+## 📖 Detailed Request Flow
 
-![Architecture Diagram](architecture-detailed.png)
+This section breaks down the request lifecycle into logical steps.
 
-### Request Flow Explained
+### Step 1: Ingress (Entry)
 
-1.  **Web Traffic (HTTP)**:
-    - **User** sends a request to the **Application Load Balancer (ALB)** via the Internet Gateway.
-    - **ALB** (in Public Subnet) forwards the traffic to a healthy **App Instance** (in Private Subnet) on Port 80.
-    - _Security_: The App Instance accepts traffic **only** from the ALB's Security Group.
+**Visual Flow:** `User` -> `Route 53` -> `IGW` -> `ALB`
 
-2.  **Administrative Access (SSH)**:
-    - **Admin** connects to the **Bastion Host** (in Public Subnet) on Port 22.
-    - From the Bastion, the Admin initiates an SSH connection to the **App Instance** (Private IP).
-    - _Security_: The App Instance accepts SSH **only** from the Bastion's Security Group.
+![Ingress Flow](aws_flow_step_1_ingress.png)
 
-3.  **Outbound Traffic (Updates)**:
-    - **App Instances** initiate requests (e.g., `yum update`) to the **NAT Gateway** (in Public Subnet).
-    - **NAT Gateway** forwards the traffic to the internet via the Internet Gateway.
-    - _Note_: This allows patches/installation without exposing the instances to inbound internet traffic.
+1.  **User Request**: A user visits `https://garden.srinivaskona.life`.
+2.  **DNS Resolution (Route 53)**: AWS Route 53 resolves the domain name to the IP addresses of the Application Load Balancer (ALB).
+3.  **VPC Entry (IGW)**: The request enters the VPC through the Internet Gateway (IGW).
+4.  **SSL Termination (ALB)**: The Application Load Balancer (in Public Subnets) receives the encrypted traffic on Port 443. It uses the ACM Certificate (`tls.crt`) to decrypt the request and inspect the traffic.
+
+### Step 2: Distribution & Scaling
+
+**Visual Flow:** `ALB` -> `Target Group` -> `ASG` -> `EC2`
+
+![Scaling Flow](aws_flow_step_2_scaling.png)
+
+5.  **Traffic Routing (Target Group)**: The ALB forwards the decrypted request to a logical Target Group.
+6.  **Load Balancing**: The Target Group selects a healthy EC2 instance from the Auto Scaling Group (ASG).
+7.  **Processing (EC2)**: The request is processed by an EC2 instance residing in a **Private Subnet** (security best practice). The instance returns the web page content.
+8.  **Auto Scaling**: If traffic increases (Cpu > 50% or Requests > 100), the ASG automatically launches new instances. If traffic decreases, it removes them to save costs.
+
+### Step 3: Secure Egress (Outbound)
+
+**Visual Flow:** `EC2` -> `NAT Gateway` -> `IGW` -> `Internet`
+
+![Egress Flow](aws_flow_step_3_egress.png)
+
+9.  **Outbound Requests**: If a Private EC2 instance needs to access the internet (e.g., for software updates), it cannot go directly.
+10. **NAT Gateway**: The traffic is routed to a NAT Gateway in the Public Subnet.
+11. **Internet Access**: The NAT Gateway forwards the traffic through the Internet Gateway (IGW) to the external internet, ensuring basic security by hiding the private IP.
+
+---
+
+## 🏗️ Resource Definitions
+
+| Resource                            | Type     | Description                                                               |
+| :---------------------------------- | :------- | :------------------------------------------------------------------------ |
+| **VPC**                             | Network  | The isolated network environment for all resources.                       |
+| **Internet Gateway (IGW)**          | Network  | Doorway for traffic to enter/exit the VPC from the internet.              |
+| **Public Subnet**                   | Network  | Subnet with direct internet access. Hosts ALB and NAT Gateway.            |
+| **Private Subnet**                  | Network  | Subnet with NO direct internet access. Hosts Application Instances.       |
+| **NAT Gateway**                     | Network  | Allows private instances to access the internet securely (outbound only). |
+| **Application Load Balancer (ALB)** | Compute  | Distributes incoming app traffic across multiple targets.                 |
+| **Target Group (TG)**               | Compute  | Logical group of targets (EC2 instances) for routing requests.            |
+| **Auto Scaling Group (ASG)**        | Compute  | Manages the fleet of EC2 instances, scaling up/down automatically.        |
+| **Launch Template**                 | Config   | Blueprint for creating new EC2 instances (AMI, Instance Type, Key Pair).  |
+| **Route 53**                        | DNS      | Scalable Domain Name System web service.                                  |
+| **ACM**                             | Security | Handles SSL/TLS certificates for secure HTTPS connections.                |
+
+---
 
 ## 🚀 Deployment Instructions
 
 ### Prerequisites
 
+- AWS CLI installed and configured.
 - Terraform installed.
-- AWS Credentials configured (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`).
-- An existing AWS Key Pair (default name: `aws`).
+- Valid Domain Name and SSL Certificate (`tls.crt`, `tls.key`).
 
-### 1. Initialize
+### Quick Start (Automation Script)
 
-Download the required AWS provider plugins.
-
-```bash
-cd load-balancer
-terraform init
-```
-
-### 2. Plan
-
-Preview the resources that will be created (VPC, Subnets, EC2, ALB, etc.).
+We have provided a comprehensive script `deploy_garden.sh` that handles the entire process:
 
 ```bash
-terraform plan
+./deploy_garden.sh
 ```
 
-### 3. Apply
+**What the script does:**
 
-Provision the infrastructure. This will take ~3-5 minutes (mainly for the NAT Gateway).
+1. **Checks Credentials**: Verifies AWS access.
+2. **Imports Certificates**: Uploads your local SSL certs to AWS ACM.
+3. **Configures Terraform**: Updates variable files with the new Certificate ARN.
+4. **Deploys Infrastructure**: Runs `terraform apply` to create all resources.
+5. **Outputs Nameservers**: Provides the Route 53 nameservers for your domain registrar.
 
-```bash
-terraform apply -auto-approve
+### Manual Deployment Steps
+
+If you prefer running Terraform manually:
+
+1. **Initialize Terraform:**
+
+   ```bash
+   terraform init
+   ```
+
+2. **Import Certificate (Optional if already imported):**
+
+   ```bash
+   aws acm import-certificate --certificate fileb://cert.crt --private-key fileb://key.key
+   ```
+
+3. **Apply Configuration:**
+
+   ```bash
+   terraform apply
+   ```
+
+4. **Update DNS:**
+   - Copy the `nameservers` output from Terraform.
+   - Update your domain registrar (e.g., GoDaddy) with these checks.
+
+---
+
+## 🔍 Verification
+
+Once deployed, you can verify the status:
+
+- **Web Access**: Visit `https://garden.srinivaskona.life`
+  - Should load the application securely.
+  - Browser should show a valid lock icon.
+
+- **Load Balancing**: Refresh the page multiple times. You may see the "Server IP" or hostname change in the application response, indicating traffic distribution.
+
+---
+
+## 📂 Project Structure
+
+```
+├── alb.tf                # Load Balancer & Listeners configuration
+├── autoscaling.tf        # Launch Template & Auto Scaling Group
+├── deploy_garden.sh      # Automation script for deployment
+├── instances.tf          # EC2 Instance definitions (Bastion)
+├── outputs.tf            # Terraform Outputs (DNS, Nameservers)
+├── route53.tf            # Route 53 Zone & Records
+├── security.tf           # Security Groups (ALB, App, Bastion)
+├── user_data.sh          # Boot script for EC2 instances
+├── variables.tf          # Configuration variables (Region, CIDRs)
+└── vpc.tf                # VPC, Subnets, Gateways
 ```
 
-## ✅ Verification
+---
 
-Once the deployment is complete, Terraform will output the **ALB DNS Name**.
+## 🧠 Technical Deep Dive: How ALB, ASG, and Target Groups Work Together
 
-1.  **Access the Web App**:
-    Open the ALB URL in your browser or use `curl`:
+It can be confusing to understand how these three components talk to each other. Here is the internal process:
 
-    ```bash
-    curl http://sri-alb-example-12345.ap-south-1.elb.amazonaws.com
-    ```
+### The "Glue": Target Group (TG)
 
-    **Expected Output**:
+Think of the **Target Group** as a dynamic "Contact List" for the Load Balancer. The ALB doesn't know about specific EC2 instances; it only knows to send traffic to the Target Group.
 
-    ```html
-    <h1>Hello from Terraform EC2 (Apache)</h1>
-    <p>Running from internal IP address: 10.0.3.50</p>
-    ```
+### The Workflow
 
-    _(The IP address `10.0.3.50` validates that the request was served by a private instance)._
+1.  **Scale Out Event**:
+    - The **Auto Scaling Group (ASG)** detects high CPU usage (>50%).
+    - It launches a new EC2 Instance.
+2.  **Automatic Registration**:
+    - Because we attached the ASG to the Target Group (in `autoscaling.tf`), the ASG automatically **registers** the new instance's ID and IP with the Target Group.
+    - Status changes to: `initial`.
+3.  **Health Checks**:
+    - The ALB sees a new member in the Target Group.
+    - It immediately starts pinging the instance (e.g., `GET /` on Port 80).
+    - If the instance responds with `200 OK`, the status changes to `healthy`.
+4.  **Traffic Routing**:
 
-2.  **Verify High Availability**:
-    Refresh the page multiple times. The internal IP should toggle between the instances in different Availability Zones (e.g., `10.0.3.x` and `10.0.4.x`).
+---
 
-3.  **Verify Security**:
-    Try to access the private IPs directly (e.g., `http://10.0.3.50`). This should **fail**, confirming the private subnet isolation.
+## 💰 Cost Analysis (Estimated)
 
-## 🧹 Cleanup
+Here is the breakdown of what is Free and what Costs money in this setup:
 
-To destroy all resources and stop billing:
+| Resource                      | Service  | Status        | Estimated Cost                   |
+| :---------------------------- | :------- | :------------ | :------------------------------- |
+| **VPC & Subnets**             | VPC      | **Free**      | $0.00                            |
+| **Security Groups**           | VPC      | **Free**      | $0.00                            |
+| **Route Tables**              | VPC      | **Free**      | $0.00                            |
+| **EC2 Instances (t2.micro)**  | EC2      | **Free Tier** | $0.00 (First 750 hrs/month)      |
+| **SSL Certificate**           | ACM      | **Free**      | $0.00 (Public Certs)             |
+| **Target Group**              | ELB      | **Free**      | $0.00                            |
+| **Route 53 Hosted Zone**      | Route 53 | **Unknown**   | **$0.50 / month**                |
+| **NAT Gateway**               | VPC      | **Billable**  | **~$0.045 / hour** (~$32/month)  |
+| **Application Load Balancer** | ELB      | **Billable**  | **~$0.0225 / hour** (~$16/month) |
 
-```bash
-terraform destroy -auto-approve
-```
+### ⚠️ Important Note on NAT Gateway
+
+The **NAT Gateway** is the most expensive item here (~$32/month). It is required for Private Instances to download updates securely. If this is just a learning lab, destroy it immediately after use!
