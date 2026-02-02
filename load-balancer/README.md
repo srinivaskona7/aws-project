@@ -2,11 +2,47 @@
 
 This project automates the deployment of a highly available, secure, and scalable web application infrastructure on AWS using Terraform. It includes a custom domain, SSL termination, and autoscaling capabilities.
 
+## 📑 Table of Contents
+
+1.  [High-Level Architecture](#-high-level-architecture)
+2.  [Architectural Provisioning Flow (Execution Order)](#-architectural-provisioning-flow-execution-order)
+3.  [Detailed Request Flow](#-detailed-request-flow)
+4.  [Resource Definitions](#-resource-definitions)
+5.  [AWS Credentials & Configuration](#-aws-credentials--configuration)
+6.  [Deployment Instructions](#-deployment-instructions)
+7.  [Verification](#-verification)
+8.  [Project Structure](#-project-structure)
+9.  [Technical Deep Dive](#-technical-deep-dive-how-alb-asg-and-target-groups-work-together)
+10. [Detailed Cost Analysis](#-detailed-cost-analysis-estimated)
+
 ## 🌟 High-Level Architecture
 
 This diagram illustrates the overall architecture, from user request to backend processing.
 
 ![AWS Architecture Diagram](aws_architecture_diagram.png)
+
+---
+
+## 🏗️ Architectural Provisioning Flow (Execution Order)
+
+When the script runs, it builds the cloud data center in this specific "Architect's Order", ensuring every layer is ready before the next relies on it:
+
+| Step   | Layer           | Service Created             | Why/Purpose                                                   |
+| :----- | :-------------- | :-------------------------- | :------------------------------------------------------------ |
+| **1**  | **Foundation**  | `AWS VPC`                   | The private cloud network boundary.                           |
+| **2**  | **Access**      | `Internet Gateway`          | The physical door to the internet.                            |
+| **3**  | **Network**     | `Subnets` (Public/Private)  | Logical rooms to separate secure vs. public resources.        |
+| **4**  | **Routing**     | `Route Tables`              | The maps telling traffic where to go (Internet vs Local).     |
+| **5**  | **Security**    | `Security Groups`           | Firewalls wrapping every resource (ALB, App, Bastion).        |
+| **6**  | **Identity**    | `ACM Certificate`           | The digital ID card (SSL) for HTTPS trust.                    |
+| **7**  | **Traffic**     | `Target Groups`             | The waiting room list for application instances.              |
+| **8**  | **Entry Point** | `Application Load Balancer` | The receptionist that handles public web traffic.             |
+| **9**  | **Compute**     | `Launch Template`           | The blueprint for creating identical servers.                 |
+| **10** | **Scaling**     | `Auto Scaling Group`        | The manager that hires/fires servers (EC2) based on demand.   |
+| **11** | **Egress**      | `NAT Gateway`               | The proxy allowing private servers to fetch updates securely. |
+| **12** | **DNS**         | `Route 53 Zone`             | The public address book connecting your domain to the ALB.    |
+
+---
 
 ## 📖 Detailed Request Flow
 
@@ -251,22 +287,25 @@ Think of the **Target Group** as a dynamic "Contact List" for the Load Balancer.
 
 ---
 
-## 💰 Cost Analysis (Estimated)
+## 💰 Detailed Cost Analysis (Estimated)
 
-Here is the breakdown of what is Free and what Costs money in this setup:
+Below is the breakdown comparing a **New AWS Account (Free Tier Eligible)** vs. a **Standard Account**.
 
-| Resource                      | Service  | Status        | Estimated Cost                   |
-| :---------------------------- | :------- | :------------ | :------------------------------- |
-| **VPC & Subnets**             | VPC      | **Free**      | $0.00                            |
-| **Security Groups**           | VPC      | **Free**      | $0.00                            |
-| **Route Tables**              | VPC      | **Free**      | $0.00                            |
-| **EC2 Instances (t2.micro)**  | EC2      | **Free Tier** | $0.00 (First 750 hrs/month)      |
-| **SSL Certificate**           | ACM      | **Free**      | $0.00 (Public Certs)             |
-| **Target Group**              | ELB      | **Free**      | $0.00                            |
-| **Route 53 Hosted Zone**      | Route 53 | **Unknown**   | **$0.50 / month**                |
-| **NAT Gateway**               | VPC      | **Billable**  | **~$0.045 / hour** (~$32/month)  |
-| **Application Load Balancer** | ELB      | **Billable**  | **~$0.0225 / hour** (~$16/month) |
+> **Note**: These prices are estimates for the `ap-south-1` (Mumbai) region.
 
-### ⚠️ Important Note on NAT Gateway
+| Component         | Architecture Role                 | Hourly Cost (Std) | Monthly (Std) | **Trial Account (Free Tier)** | **Standard Account**   |
+| :---------------- | :-------------------------------- | :---------------- | :------------ | :---------------------------- | :--------------------- |
+| **NAT Gateway**   | Secure Egress for Private Subnets | **$0.045**        | **$32.40**    | 🔴 **Billable** ($32.40)      | 🔴 **$32.40**          |
+| **ALB**           | Traffic Distribution & SSL        | $0.0225           | $16.20        | 🟢 **Free** (750 Hrs)         | 🔴 **$16.20**          |
+| **EC2 Instances** | Compute (2x t2.micro)             | $0.0116           | $8.35         | 🟢 **Free** (750 Hrs)         | 🔴 **$16.70** (for 2)  |
+| **EBS Storage**   | Disk Space (2x 8GB)               | $0.00             | $1.60         | 🟢 **Free** (30 GB)           | 🔴 **$1.60**           |
+| **Elastic IP**    | Static IP for NAT                 | $0.005            | $3.60         | 🟢 **Free** (Attached)        | 🟢 **Free** (Attached) |
+| **Route 53**      | DNS Hosted Zone                   | N/A               | $0.50         | 🔴 **Billable** ($0.50)       | 🔴 **$0.50**           |
+| **Data Transfer** | Outbound Traffic                  | varies            | varies        | 🟢 **Free** (100 GB)          | 🔴 **Varies**          |
+| **TOTAL**         | **Estimated Monthly Run Rate**    |                   |               | **~$32.90 / mo**              | **~$67.40 / mo**       |
 
-The **NAT Gateway** is the most expensive item here (~$32/month). It is required for Private Instances to download updates securely. If this is just a learning lab, destroy it immediately after use!
+### 🚨 Critical Billing Warning
+
+Even on a **Free Tier** account, you **WILL BE CHARGED ~$32.90/month** primarily due to the **NAT Gateway**. This component is NOT part of the Free Tier.
+
+- **Recommendation**: If this is for learning, run `terraform destroy` immediately after testing to avoid costs.
