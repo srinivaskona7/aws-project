@@ -64,6 +64,51 @@ This section breaks down the request lifecycle into logical steps.
 
 ---
 
+## 🔐 AWS Credentials & Configuration
+
+Before running Terraform, you must provide AWS credentials. Terraform automatically looks for them in the following order:
+
+### Option 1: Environment Variables (Recommended for CI/CD or Temporary Sessions)
+
+You can export your credentials directly in your terminal. This does not save them to disk.
+
+**Mac/Linux:**
+
+```bash
+export AWS_ACCESS_KEY_ID="AKIAxxxxxxxxxxxxxxxx"
+export AWS_SECRET_ACCESS_KEY="wJalrxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+export AWS_DEFAULT_REGION="ap-south-1"
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$Env:AWS_ACCESS_KEY_ID="AKIAxxxxxxxxxxxxxxxx"
+$Env:AWS_SECRET_ACCESS_KEY="wJalrxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+$Env:AWS_DEFAULT_REGION="ap-south-1"
+```
+
+### Option 2: Shared Credentials File (Recommended for Local Dev)
+
+If you have the AWS CLI installed, you can configure a profile that Terraform will use.
+
+1.  Run `aws configure` and enter your keys.
+2.  Or manually edit `~/.aws/credentials` (Mac/Linux) or `%USERPROFILE%\.aws\credentials` (Windows):
+
+```ini
+[default]
+aws_access_key_id = AKIAxxxxxxxxxxxxxxxx
+aws_secret_access_key = wJalrxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Terraform will automatically pick up the `[default]` profile. If you want to use a specific profile:
+
+```bash
+export AWS_PROFILE=my-profile
+```
+
+---
+
 ## 🚀 Deployment Instructions
 
 ### Prerequisites
@@ -125,6 +170,29 @@ Once deployed, you can verify the status:
   - Browser should show a valid lock icon.
 
 - **Load Balancing**: Refresh the page multiple times. You may see the "Server IP" or hostname change in the application response, indicating traffic distribution.
+
+### DNS Verification (Troubleshooting)
+
+If the site is not loading, check if the DNS has propagated.
+
+**Option 1: Check AWS Nameservers Directly (Bypass Propagation Delay)**
+This confirms AWS is ready, even if GoDaddy hasn't updated yet.
+
+```bash
+# Replace 'ns-xxxx...' with one of your nameservers from 'terraform output'
+dig @ns-1335.awsdns-38.org garden.srinivaskona.life
+```
+
+- **Success**: Returns IP addresses in `ANSWER SECTION`.
+- **Failure**: `NXDOMAIN` or `REFUSED`.
+
+**Option 2: Global Check (Standard)**
+
+```bash
+dig garden.srinivaskona.life
+```
+
+- **Note**: This may take 10-15 minutes after updating GoDaddy.
 
 ---
 
