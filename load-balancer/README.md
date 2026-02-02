@@ -159,6 +159,20 @@ If you prefer running Terraform manually:
    - Copy the `nameservers` output from Terraform.
    - Update your domain registrar (e.g., GoDaddy) with these checks.
 
+### Retrieving Outputs (Post-Deployment)
+
+If you need to see the connection details (DNS, IPs, Nameservers) later, simply run:
+
+```bash
+terraform output
+```
+
+Or for a specific value:
+
+```bash
+terraform output alb_dns_name
+```
+
 ---
 
 ## 🔍 Verification
