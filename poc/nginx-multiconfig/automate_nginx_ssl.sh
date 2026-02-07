@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# ==============================================================================
+#  Nginx SSL Automation Script (Architect Grade)
+#  
+#  Usage (Interactive): ./automate_nginx_ssl.sh
+#  Usage (Direct):      ./automate_nginx_ssl.sh domain1.com domain2.com
+#  One-Liner Install:   curl -sL https://raw.githubusercontent.com/srinivaskona7/aws-project/main/poc/nginx-multiconfig/automate_nginx_ssl.sh | sudo bash -s -- domain.com
+# ==============================================================================
+
 # Configuration
 EMAIL="admin@srinivaskona.life" # Default email for Certbot
 

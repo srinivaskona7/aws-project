@@ -221,6 +221,13 @@ _Note_: Often Certbot groups multiple domains into one certificate (SANs). Here,
 
 We have created `automate_nginx_ssl.sh` to handle HTML generation, Nginx config, and SSL all in one go.
 
+**🚀 Professional One-Liner Install**
+Run this on any fresh EC2 instance to set up a domain instantly:
+
+```bash
+curl -sL https://raw.githubusercontent.com/srinivaskona7/aws-project/main/poc/nginx-multiconfig/automate_nginx_ssl.sh | sudo bash -s -- custom.domain.com
+```
+
 **Mode 1: Interactive (Wizard)**
 Run without arguments to be prompted for domains:
 
@@ -229,19 +236,20 @@ Run without arguments to be prompted for domains:
 # Enter Domain Name: srinivas3.srinivaskona.life
 ```
 
-**Mode 2: Direct Install (DevOps Style)**
-Pass domains as arguments to skip prompts:
+**Mode 2: Direct Execution**
+Pass multiple domains as arguments:
 
 ```bash
-./automate_nginx_ssl.sh sriniva4.srinivaskona.life srinivas5.srinivaskona.life
+./automate_nginx_ssl.sh domain1.com domain2.com
 ```
 
 **What it does:**
 
-1.  **Generates Content**: Creates `/var/www/slug/index.html` with the domain name.
-2.  **Configures Nginx**: Creates `/etc/nginx/conf.d/slug.conf` with Port 80 setup.
-3.  **Secures**: Runs `certbot` non-interactively to get the SSL certificate.
-4.  **Validates**: Checks syntax and reloads Nginx.
+1.  **Auto-Install**: Installs Nginx & Certbot if missing.
+2.  **Generates Content**: Creates `/var/www/slug/index.html`.
+3.  **Configures Nginx**: Creates `/etc/nginx/conf.d/custom-domain.conf` (slug-based).
+4.  **Secures**: Runs `certbot` to get the SSL certificate.
+5.  **Validates**: Checks syntax and reloads Nginx.
 
 ---
 
