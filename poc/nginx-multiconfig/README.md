@@ -217,6 +217,32 @@ Found the following certs:
 
 _Note_: Often Certbot groups multiple domains into one certificate (SANs). Here, one cert covers both `sri1` and `sri2`.
 
+### 6.4 Automate Everything (The Architect's Script)
+
+We have created `automate_nginx_ssl.sh` to handle HTML generation, Nginx config, and SSL all in one go.
+
+**Mode 1: Interactive (Wizard)**
+Run without arguments to be prompted for domains:
+
+```bash
+./automate_nginx_ssl.sh
+# Enter Domain Name: srinivas3.srinivaskona.life
+```
+
+**Mode 2: Direct Install (DevOps Style)**
+Pass domains as arguments to skip prompts:
+
+```bash
+./automate_nginx_ssl.sh sriniva4.srinivaskona.life srinivas5.srinivaskona.life
+```
+
+**What it does:**
+
+1.  **Generates Content**: Creates `/var/www/slug/index.html` with the domain name.
+2.  **Configures Nginx**: Creates `/etc/nginx/conf.d/slug.conf` with Port 80 setup.
+3.  **Secures**: Runs `certbot` non-interactively to get the SSL certificate.
+4.  **Validates**: Checks syntax and reloads Nginx.
+
 ---
 
 ## Architectural Request Flow (Visual)
