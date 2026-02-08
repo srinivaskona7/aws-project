@@ -8,12 +8,12 @@ This document serves as the **Single Source of Truth** for the deployment, manag
 
 1.  [Phase 1: AWS Infrastructure Provisioning](#phase-1-aws-infrastructure-provisioning)
 2.  [Phase 2: Domain DNS Setup](#phase-2-domain-dns-setup)
-3.  [Phase 3: Nginx Installation & Check](#phase-3-nginx-installation--check)
-4.  [Phase 4: Backend Service Configuration](#phase-4-backend-service-configuration)
-5.  [Phase 5: Nginx Reverse Proxy Config](#phase-5-nginx-reverse-proxy-config)
-6.  [Phase 6: SSL Security (The Architect's Guide)](#phase-6-ssl-security-the-architects-guide)
-7.  [Architectural Request Flow (Visual)](#architectural-request-flow-visual)
-8.  [FAQ: Verification & IP Access](#faq-verification--ip-access)
+3.  [Phase 3: System Setup (The Foundation)](#phase-3-system-setup-the-foundation)
+4.  [Phase 4: Manual Configuration (The Core)](#phase-4-manual-configuration-the-core)
+5.  [Phase 5: SSL Security (The Shield)](#phase-5-ssl-security-the-shield)
+6.  [Phase 6: Verification](#phase-6-verification)
+7.  [Appendix: Automated "Fast Track"](#appendix-automated-fast-track-the-script)
+8.  [Architectural Request Flow (Visual)](#architectural-request-flow-visual)
 
 ---
 
@@ -65,9 +65,9 @@ ssh -i aws.pem ec2-user@<YOUR_PUBLIC_IP>
 
 ---
 
-## Phase 3: Nginx Installation & Check
+## Phase 3: System Setup (The Foundation)
 
-**Goal**: Ensure the Web Server software is installed and running.
+**Goal**: Install the necessary software.
 
 ```bash
 # 1. Update System
@@ -76,280 +76,145 @@ sudo dnf update -y
 # 2. Install Nginx
 sudo dnf install nginx -y
 
-# 3. Start & Enable
-sudo systemctl start nginx
-sudo systemctl enable nginx
-
-# 4. Verify (Should see "Active: running")
-sudo systemctl status nginx
-```
-
-_Check_: Visit `http://13.233.199.126` in your browser. You should see the "Welcome to Nginx" page.
-
----
-
-## Phase 4: Backend Service Configuration
-
-**Goal**: Create the actual websites running on Ports 8002 and 8003.
-
-### 4.1 Create Content Directories
-
-```bash
-sudo mkdir -p /var/www/sri1
-sudo mkdir -p /var/www/sri2
-```
-
-### 4.2 Start Python Backends
-
-We use Python's built-in HTTP server for these backends.
-
-```bash
-# Start Sri1 on Port 8002 (Background)
-nohup python3 -m http.server 8002 -d /var/www/sri1 > /var/log/sri1.log 2>&1 &
-
-# Start Sri2 on Port 8003 (Background)
-nohup python3 -m http.server 8003 -d /var/www/sri2 > /var/log/sri2.log 2>&1 &
-```
-
----
-
-## Phase 5: Nginx Reverse Proxy Config
-
-**Goal**: Configure Nginx to route traffic to the Python ports based on domain name.
-
-### ❓ FAQ: "Why is the file named `srinivaskona.conf`?"
-
-You can name this file **anything you want**, as long as it ends in `.conf`.
-
-- **Why?**: The main Nginx config (`/etc/nginx/nginx.conf`) has a line `include /etc/nginx/conf.d/*.conf;`.
-- **Best Practice**: Name it after your project (e.g., `srinivas.conf`, `web-project.conf`) so you know what it contains.
-
-### 5.1 Create Config File
-
-File: `/etc/nginx/conf.d/srinivaskona.conf`
-
-```nginx
-server {
-    listen 80;
-    server_name sri1.srinivaskona.life;
-    location / {
-        proxy_pass http://localhost:8002;
-    }
-}
-
-server {
-    listen 80;
-    server_name sri2.srinivaskona.life;
-    location / {
-        proxy_pass http://localhost:8003;
-    }
-}
-```
-
-### 5.2 Apply Changes
-
-```bash
-sudo nginx -t   # Test syntax
-sudo systemctl restart nginx
-```
-
----
-
-## Phase 6: SSL Security (The Architect's Guide)
-
-**Goal**: Understand exactly how the "Green Padlock" is created and verified.
-
-### 6.0 Install Certbot (The Tool)
-
-Before you can get a certificate, you must install the "Robot" that talks to the Authority.
-
-```bash
-# 1. Update the OS package manager
-sudo dnf update -y
-
-# 2. Install Certbot and the Nginx plugin
-# - certbot: The core tool
-# - python3-certbot-nginx: The plugin that knows how to read/edit your nginx.conf
+# 3. Install Certbot (The SSL Robot)
 sudo dnf install certbot python3-certbot-nginx -y
 
-# 3. Verify it's installed
-certbot --version
+# 4. Start & Enable Nginx
+sudo systemctl enable --now nginx
 ```
 
-### 6.1 The "Proof of Ownership" Architecture
+---
 
-We use a key tool called **Certbot**.
+## Phase 4: Manual Configuration (The Core)
 
-1.  **The Challenge**: You run `certbot`. It contacts **Let's Encrypt (The Authority)** and says "I want a cert for `sri1`".
-2.  **The Secret Task**: The Authority replies: "Okay, prove it. Create a file named `abc-123` with the text `secret-code` on your server."
-3.  **The Execution**: Certbot secretly places this file in your web folder:
-    - Path: `/.well-known/acme-challenge/abc-123`
-4.  **The Verification Check**: The Authority (from the cloud) tries to download `http://sri1.../.well-known/...`.
-    - It hits your **Nginx Server**.
-    - Nginx serves the file.
-5.  **The Reward**: The Authority sees the file matches. It creates the **SSL Certificate** and sends it to Certbot.
+**Goal**: Create the websites for `sri1` and `sri2` manually. This is the **most important part** of understanding Nginx.
 
-### 6.2 Automating it (The Command)
+### 4.1 Understand "Slugs" (Safe Names)
+
+We use a concept called a **Slug** — a sanitized version of a hostname.
+
+- **Why?**: File systems dislike dots (`.`) in folder names.
+- **Rule**: `sri1.srinivaskona.life` -> `sri1-srinivaskona-life`
+
+### 4.2 Create Web Roots & HTML Content
+
+First, create the folders where your actual website files will live.
 
 ```bash
-sudo certbot --nginx -d sri1.srinivaskona.life -d sri2.srinivaskona.life
+# Create Directories (Slugs)
+sudo mkdir -p /var/www/sri1-srinivaskona-life
+sudo mkdir -p /var/www/sri2-srinivaskona-life
+
+# Set Permissions
+sudo chmod -R 755 /var/www
+
+# Create Sample HTML (Content)
+echo "<h1>Hello from SRI1 (Manual)</h1>" | sudo tee /var/www/sri1-srinivaskona-life/index.html
+echo "<h1>Hello from SRI2 (Manual)</h1>" | sudo tee /var/www/sri2-srinivaskona-life/index.html
 ```
 
-- **--nginx**: Tells Certbot "I am using Nginx. Please automatically edit my `.conf` file to add `listen 443 ssl` and point to the key files."
+### 4.3 Create Nginx Server Blocks
 
-### 6.3 Verification: How to see ALL certs?
+Now, tell Nginx about these sites. We create **two separate config files** for cleaner architecture.
 
-To list every certificate managed by this server:
-
-```bash
-sudo certbot certificates
-```
-
-**Sample Output:**
-
-```text
-Found the following certs:
-  Certificate Name: sri1.srinivaskona.life
-    Domains: sri1.srinivaskona.life sri2.srinivaskona.life
-    Expiry Date: 2026-05-04 10:00:00+00:00 (VALID: 87 days)
-    Certificate Path: /etc/letsencrypt/live/sri1.srinivaskona.life/fullchain.pem
-```
-
-_Note_: Often Certbot groups multiple domains into one certificate (SANs). Here, one cert covers both `sri1` and `sri2`.
-
-### 6.4 Automate Everything (The Architect's Script)
-
-We have created `automate_nginx_ssl.sh` to handle HTML generation, Nginx config, and SSL all in one go.
-
-**🚀 Professional One-Liner Install**
-Run this on any fresh EC2 instance to set up a domain instantly:
-
-```bash
-curl -sL https://raw.githubusercontent.com/srinivaskona7/aws-project/main/poc/nginx-multiconfig/automate_nginx_ssl.sh | sudo bash -s -- custom.domain.com
-```
-
-**Mode 1: Interactive (Wizard)**
-Run without arguments to be prompted for domains:
-
-```bash
-./automate_nginx_ssl.sh
-# Enter Domain Name: srinivas3.srinivaskona.life
-```
-
-**Mode 2: Direct Execution**
-Pass multiple domains as arguments:
-
-```bash
-./automate_nginx_ssl.sh domain1.com domain2.com
-```
-
-#### Generated File Content (Multi-Domain Example)
-
-When running for two domains (e.g., `sri1.srinivaskona.life` and `sri2.srinivaskona.life`), the script creates isolated resources for each.
-
-**A. Console Output (Status Codes)**
-
-- **[SUCCESS] (Green)**: Freshly installed or configured items.
-- **[Exchanged] (Yellow)**: Items that already exist (Idempotent check).
-- **Cert Path**: Explicitly lists where your new certificates are (e.g., `/etc/letsencrypt/live/sri1.../fullchain.pem`).
-
-**B. Configuration Files Created**
-The system keeps domains separate for clean architecture:
-
-1.  **sri1 Config**: `/etc/nginx/conf.d/sri1-srinivaskona-life.conf`
-2.  **sri2 Config**: `/etc/nginx/conf.d/sri2-srinivaskona-life.conf`
-
-**C. Template Content (Example for `sri1`)**
-
-_File: `/var/www/sri1-srinivaskona-life/index.html`_
-
-```html
-<html>
-  <head>
-    <title>sri1.srinivaskona.life</title>
-  </head>
-  <body>
-    <h1>sri1.srinivaskona.life (sri1-srinivaskona-life)</h1>
-  </body>
-</html>
-```
-
-_File: `/etc/nginx/conf.d/sri1-srinivaskona-life.conf` (Post-Certbot)_
+**File 1: `/etc/nginx/conf.d/sri1-srinivaskona-life.conf`**
 
 ```nginx
 server {
+    listen 80;
     server_name sri1.srinivaskona.life;
     root /var/www/sri1-srinivaskona-life;
     index index.html;
 
-    # SSL Configuration (Added by Certbot)
-    listen 443 ssl;
-    ssl_certificate /etc/letsencrypt/live/sri1.srinivaskona.life/fullchain.pem;
-    # ... other SSL params ...
+    location / {
+        try_files $uri $uri/ =404;
+    }
 }
 ```
 
-_(This repeats exactly the same for `sri2` in its own file.)_
+**File 2: `/etc/nginx/conf.d/sri2-srinivaskona-life.conf`**
 
-#### Process Summary (How it works)
+```nginx
+server {
+    listen 80;
+    server_name sri2.srinivaskona.life;
+    root /var/www/sri2-srinivaskona-life;
+    index index.html;
 
-1.  **Auto-Install**: Installs Nginx & Certbot if missing.
-2.  **Generates Content**: Creates `/var/www/slug/index.html`.
-3.  **Configures Nginx**: Creates `/etc/nginx/conf.d/custom-domain.conf` (slug-based).
-4.  **Secures**: Runs `certbot` to get the SSL certificate.
-5.  **Validates**: Checks syntax and reloads Nginx.
-
-### 6.6 Manual Setup (The Hard Way)
-
-If you prefer doing things manually (or just want to learn), here is how you would set up `sri1` and `sri2` without the script.
-
-**Step 1: Create Web Roots**
-
-```bash
-sudo mkdir -p /var/www/sri1-srinivaskona-life
-sudo mkdir -p /var/www/sri2-srinivaskona-life
-sudo chmod -R 755 /var/www
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
 ```
 
-**Step 2: Create HTML Content**
+### 4.4 Verify & Reload
 
-```bash
-echo "<h1>Hello from SRI1</h1>" | sudo tee /var/www/sri1-srinivaskona-life/index.html
-echo "<h1>Hello from SRI2</h1>" | sudo tee /var/www/sri2-srinivaskona-life/index.html
-```
-
-**Step 3: Create Nginx Configs**
-Create two separate files in `/etc/nginx/conf.d/`:
-
-- `/etc/nginx/conf.d/sri1.conf`:
-  ```nginx
-  server {
-      listen 80;
-      server_name sri1.srinivaskona.life;
-      root /var/www/sri1-srinivaskona-life;
-      index index.html;
-  }
-  ```
-- _(Repeat for `sri2.conf` with `sri2` values)_
-
-**Step 4: Reload & Secure**
+Check if your syntax is correct before reloading.
 
 ```bash
 sudo nginx -t
+# If successful:
 sudo systemctl reload nginx
+```
+
+---
+
+## Phase 5: SSL Security (The Shield)
+
+**Goal**: Secure your sites with HTTPS (The Green Padlock).
+
+Run Certbot manually. We use the `--nginx` flag so it automatically edits your config files to add the SSL settings.
+
+```bash
 sudo certbot --nginx -d sri1.srinivaskona.life -d sri2.srinivaskona.life
 ```
 
-### 6.7 What is a Slug? (And why do we use it?)
+**What Certbot Did:**
+It modified your `.conf` files to look like this:
 
-You might notice files named like `sri1-srinivaskona-life`.
+```nginx
+server {
+    server_name sri1.srinivaskona.life;
+    # ...
+    listen 443 ssl; # Managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/sri1.srinivaskona.life/fullchain.pem;
+    # ...
+}
+```
 
-- **Definition**: A "Slug" is a sanitized version of a name, safe for file systems and URLs.
-- **Why?**: Linux file systems and Nginx configs can get confused by special characters or too many dots.
-- **Our Rules**: We replace every dot (`.`) with a hyphen (`-`).
-  - Input: `sri1.srinivaskona.life`
-  - Slug: `sri1-srinivaskona-life`
-  - Result: `/var/www/sri1-srinivaskona-life` (Clean, Safe, Standardized).
+---
+
+## Phase 6: Verification
+
+- Visit: `https://sri1.srinivaskona.life` (Should show "Hello from SRI1")
+- Visit: `https://sri2.srinivaskona.life` (Should show "Hello from SRI2")
+
+### FAQ: IP Access
+
+**Q: Can I access via IP?**
+**A: No.** SSL certs are tied to domains, not IPs. The browser will block it or show a warning.
+
+---
+
+## Appendix: Automated "Fast Track" (The Script)
+
+If you have many domains or want to skip the manual typing, use our **Automation Script**.
+
+**🚀 One-Liner Install**
+
+```bash
+curl -sL https://raw.githubusercontent.com/srinivaskona7/aws-project/main/poc/nginx-multiconfig/automate_nginx_ssl.sh | sudo bash -s -- domain.com
+```
+
+**What the script does for you:**
+
+1.  **Installs** Nginx/Certbot (Phase 3).
+2.  **Creates** Web Roots & HTML (Phase 4.2).
+3.  **Configures** Nginx with Slugs (Phase 4.3).
+4.  **Secures** with SSL (Phase 5).
+5.  **Verifies** Setup (Phase 6).
+
+It produces the exact same result as the manual steps above, instantly.
 
 ---
 
@@ -365,36 +230,8 @@ This diagram illustrates exactly how a request for `sri1` is routed differently 
 2.  **Encrypted Tunnel**: The request hits Nginx on **Port 443**.
 3.  **SNI (Server Name Indication)**: Nginx reads the encrypted header to see the target is `sri1`.
 4.  **Routing Decision**: Nginx checks its config: "Ah, `sri1` goes to local port 8002".
-5.  **Upstream Handoff**: Nginx sends the request to the Python backend running on `localhost:8002`.
-6.  **Response**: Python replies to Nginx -> Nginx replies to User.
-
----
-
-## FAQ: Verification & IP Access
-
-### Q1: Can I access the site using the IP Address? (e.g. `https://13.233.199.126`)
-
-**No, you cannot.**
-
-- **Why?**: SSL Certificates are tied to **Domain Names**, not IP addresses. If you visit the IP directly, the browser will warn "Not Secure" because the certificate says "I am sri1.srinivaskona.life", but the URL bar says "13.233.199.126". It's a mismatch.
-
-### Q2: Can I access the ports directly? (e.g. `http://13.233.199.126:8002`)
-
-**No.**
-
-- **Why?**: Your **AWS Security Group** only opens Port 80 and 443. Port 8002 is blocked from the outside world firewall. This is a **Security Best Practice**. Only Nginx (running inside the server) allows access to 8002 via `localhost`.
-
-### Q3: How do I verify if the ports are open properly?
-
-Since you can't reach them from outside, verify them **from inside** the server:
-
-```bash
-# Check if Python is listening
-curl http://localhost:8002
-curl http://localhost:8003
-```
-
-If these return HTML, your backends are perfect.
+5.  **Proxing**: Nginx serves the file from `/var/www/sri1...`.
+6.  **Response**: Nginx replies to User.
 
 ---
 
