@@ -251,6 +251,40 @@ Pass multiple domains as arguments:
 4.  **Secures**: Runs `certbot` to get the SSL certificate.
 5.  **Validates**: Checks syntax and reloads Nginx.
 
+### 6.5 Generated File Templates
+
+Here is exactly what the script creates for you:
+
+**A. The Web Page (`/var/www/slug/index.html`)**
+
+```html
+<html>
+  <head>
+    <title>srinivas3.srinivaskona.life</title>
+  </head>
+  <body>
+    <h1>srinivas3.srinivaskona.life (srinivas3-srinivaskona-life)</h1>
+  </body>
+</html>
+```
+
+**B. The Nginx Config (`/etc/nginx/conf.d/slug.conf`)**
+
+```nginx
+server {
+    listen 80;
+    server_name srinivas3.srinivaskona.life;
+    root /var/www/srinivas3-srinivaskona-life;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+```
+
+_(Note: Certbot will automatically add the SSL/443 lines to this file after it runs.)_
+
 ---
 
 ## Architectural Request Flow (Visual)
