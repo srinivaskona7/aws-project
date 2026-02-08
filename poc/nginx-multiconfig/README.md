@@ -235,5 +235,65 @@ This diagram illustrates exactly how a request for `sri1` is routed differently 
 
 ---
 
+## Appendix B: System Enhancements (v2.0)
+
+This section documents the major architectural shift and tooling upgrades applied to this project.
+
+### 1. Documentation Strategy: "Manual-First"
+
+We have restructured the project to prioritize a **Manual-First** approach for education, while enhancing the automation script to be a robust, professional-grade tool for **Power Users**.
+
+**Changes Implemented:**
+
+- **Structure**: Infrastructure -> System Setup -> **Manual Configuration** -> SSL -> Verification.
+- **Content**:
+  - Removed Python backend references (replaced with Static Hosting to match script).
+  - Integrated "Slug" explanation directly into the workflow.
+  - Visualized routing with the "Nano Banana" diagram.
+- **Result**: A clear, step-by-step manual that teaches the _concepts_ first.
+
+### 2. Enhanced Automation Script (`automate_nginx_ssl.sh`)
+
+The script has been upgraded to handle complex multi-domain scenarios robustly.
+
+**New Capabilities:**
+
+- **DNS Pre-Check**: Verifies `domain -> server_ip` before running Certbot.
+  - _Pass_: Green Success message.
+  - _Fail_: Warning log (preserves execution for testing).
+- **Robust Multi-Parameter Loop**:
+  - Usage: `./script.sh domain1 domain2 domain3`
+  - Each domain is processed independently.
+- **Detailed Summary Report**:
+  - A tabular output at the end showing the status of Config, SSL, and Cert Path for _every_ domain.
+
+### 3. Verification
+
+**Manual Trigger**
+You can test the enhanced script logic (Dry Run style, without actual Certbot if DNS fails) by running:
+
+```bash
+# Test with a fake domain (DNS Check will Warn)
+./automate_nginx_ssl.sh fake.srinivaskona.life
+
+# Test with real domains
+./automate_nginx_ssl.sh sri1.srinivaskona.life sri2.srinivaskona.life
+```
+
+**Expected Output (Summary Table)**
+
+```text
+================================================================
+   FINAL DEPLOYMENT REPORT
+================================================================
+Domain                         | Config   | SSL      | Cert Path
+----------------------------------------------------------------
+sri1.srinivaskona.life         | [KEEP]   | [EXIST]  | /etc/letsencrypt/live/sri1...
+sri2.srinivaskona.life         | [KEEP]   | [EXIST]  | /etc/letsencrypt/live/sri2...
+================================================================
+```
+
+---
+
 **Maintained By**: DevOps Team
 **Docs Location**: `/home/ec2-user/docs/`
