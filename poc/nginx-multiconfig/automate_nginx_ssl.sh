@@ -13,12 +13,14 @@ EMAIL="admin@srinivaskona.life" # Default email for Certbot
 
 # Colors
 GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 log_info() { echo -e "${BLUE}[INFO] $1${NC}"; }
 log_success() { echo -e "${GREEN}[SUCCESS] $1${NC}"; }
+log_warning() { echo -e "${YELLOW}[Exchanged] $1${NC}"; }
 log_error() { echo -e "${RED}[ERROR] $1${NC}"; }
 
 echo "----------------------------------------------------------------"
@@ -40,7 +42,7 @@ if ! command -v nginx &> /dev/null; then
         exit 1
     fi
 else
-    log_success "Nginx is already installed."
+    log_warning "Nginx is already installed."
     if ! systemctl is-active --quiet nginx; then
         log_info "Starting Nginx..."
         sudo systemctl start nginx
@@ -57,7 +59,7 @@ if ! command -v certbot &> /dev/null; then
         exit 1
     fi
 else
-    log_success "Certbot is already installed."
+    log_warning "Certbot is already installed."
 fi
 
 # 1. Input Processing
@@ -117,7 +119,7 @@ for DOMAIN in "${DOMAINS[@]}"; do
   
   # 2.1 Create Content
   if [ -d "$WEB_ROOT" ]; then
-      log_info "Web root exists: $WEB_ROOT"
+      log_warning "Web root exists: $WEB_ROOT"
   else
       log_info "Creating web root..."
       sudo mkdir -p "$WEB_ROOT"
@@ -130,9 +132,9 @@ for DOMAIN in "${DOMAINS[@]}"; do
 
   # 2.2 Create Nginx Config (HTTP)
   if [ -f "$CONF_FILE" ]; then
-      log_info "Config exists: $CONF_FILE"
+      log_warning "Config exists: $CONF_FILE"
       if grep -q "ssl_certificate" "$CONF_FILE"; then
-          log_info "SSL already configured. Skipping overwrite to preserve setup."
+          log_warning "SSL already configured. Skipping overwrite to preserve setup."
       else
           log_info "Overwriting HTTP config..."
           sudo tee "$CONF_FILE" > /dev/null <<EOF
@@ -182,8 +184,11 @@ echo "----------------------------------------------------------------"
 log_info "Phase 4: SSL Automation (Certbot)"
 echo "----------------------------------------------------------------"
 
+SUCCESS_COUNT=0
 for DOMAIN in "${DOMAINS[@]}"; do
   log_info "Requesting Certificate for: $DOMAIN"
+  
+  # Check if cert exists roughly (optional optimization, but certbot is smart enough)
   
   sudo certbot --nginx \
     -d "$DOMAIN" \
@@ -195,7 +200,17 @@ for DOMAIN in "${DOMAINS[@]}"; do
 
   if [ $? -eq 0 ]; then
       log_success "SSL Configured for $DOMAIN"
-      log_info "Configuration File: /etc/nginx/conf.d/$(echo "$DOMAIN" | tr '.' '-').conf"
+      
+      # Try to find the cert path
+      CERT_PATH="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+      if [ -f "$CERT_PATH" ]; then
+          log_success "Certificate Location: $CERT_PATH"
+      else
+          # Fallback check (sometimes certbot names it differently if duplicate)
+          log_warning "Certificate installed, but verify path manually in /etc/letsencrypt/live/"
+      fi
+      
+      SUCCESS_COUNT=$((SUCCESS_COUNT+1))
   else
       log_error "Certbot failed for $DOMAIN. Proceeding to next..."
   fi
@@ -203,5 +218,9 @@ done
 
 echo ""
 echo "----------------------------------------------------------------"
-log_success "   Automation Complete!   "
+if [ $SUCCESS_COUNT -eq ${#DOMAINS[@]} ]; then
+    log_success "   Automation Complete! All domains secured.   "
+else
+    log_warning "   Automation Complete! Secured $SUCCESS_COUNT out of ${#DOMAINS[@]} domains.   "
+fi
 echo "----------------------------------------------------------------"

@@ -251,39 +251,53 @@ Pass multiple domains as arguments:
 4.  **Secures**: Runs `certbot` to get the SSL certificate.
 5.  **Validates**: Checks syntax and reloads Nginx.
 
-### 6.5 Generated File Templates
+### 6.5 Generated File Content (Multi-Domain Example)
 
-Here is exactly what the script creates for you:
+When running for two domains (e.g., `sri1.srinivaskona.life` and `sri2.srinivaskona.life`), the script creates isolated resources for each.
 
-**A. The Web Page (`/var/www/slug/index.html`)**
+**A. Console Output (Status Codes)**
+
+- **[SUCCESS] (Green)**: Freshly installed or configured items.
+- **[Exchanged] (Yellow)**: Items that already exist (Idempotent check).
+- **Cert Path**: Explicitly lists where your new certificates are (e.g., `/etc/letsencrypt/live/sri1.../fullchain.pem`).
+
+**B. Configuration Files Created**
+The system keeps domains separate for clean architecture:
+
+1.  **sri1 Config**: `/etc/nginx/conf.d/sri1-srinivaskona-life.conf`
+2.  **sri2 Config**: `/etc/nginx/conf.d/sri2-srinivaskona-life.conf`
+
+**C. Template Content (Example for `sri1`)**
+
+_File: `/var/www/sri1-srinivaskona-life/index.html`_
 
 ```html
 <html>
   <head>
-    <title>srinivas3.srinivaskona.life</title>
+    <title>sri1.srinivaskona.life</title>
   </head>
   <body>
-    <h1>srinivas3.srinivaskona.life (srinivas3-srinivaskona-life)</h1>
+    <h1>sri1.srinivaskona.life (sri1-srinivaskona-life)</h1>
   </body>
 </html>
 ```
 
-**B. The Nginx Config (`/etc/nginx/conf.d/slug.conf`)**
+_File: `/etc/nginx/conf.d/sri1-srinivaskona-life.conf` (Post-Certbot)_
 
 ```nginx
 server {
-    listen 80;
-    server_name srinivas3.srinivaskona.life;
-    root /var/www/srinivas3-srinivaskona-life;
+    server_name sri1.srinivaskona.life;
+    root /var/www/sri1-srinivaskona-life;
     index index.html;
 
-    location / {
-        try_files $uri $uri/ =404;
-    }
+    # SSL Configuration (Added by Certbot)
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/sri1.srinivaskona.life/fullchain.pem;
+    # ... other SSL params ...
 }
 ```
 
-_(Note: Certbot will automatically add the SSL/443 lines to this file after it runs.)_
+_(This repeats exactly the same for `sri2` in its own file.)_\_
 
 ---
 
