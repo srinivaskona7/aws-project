@@ -243,15 +243,7 @@ Pass multiple domains as arguments:
 ./automate_nginx_ssl.sh domain1.com domain2.com
 ```
 
-**What it does:**
-
-1.  **Auto-Install**: Installs Nginx & Certbot if missing.
-2.  **Generates Content**: Creates `/var/www/slug/index.html`.
-3.  **Configures Nginx**: Creates `/etc/nginx/conf.d/custom-domain.conf` (slug-based).
-4.  **Secures**: Runs `certbot` to get the SSL certificate.
-5.  **Validates**: Checks syntax and reloads Nginx.
-
-### 6.5 Generated File Content (Multi-Domain Example)
+#### Generated File Content (Multi-Domain Example)
 
 When running for two domains (e.g., `sri1.srinivaskona.life` and `sri2.srinivaskona.life`), the script creates isolated resources for each.
 
@@ -297,7 +289,15 @@ server {
 }
 ```
 
-_(This repeats exactly the same for `sri2` in its own file.)_\_
+_(This repeats exactly the same for `sri2` in its own file.)_
+
+#### Process Summary (How it works)
+
+1.  **Auto-Install**: Installs Nginx & Certbot if missing.
+2.  **Generates Content**: Creates `/var/www/slug/index.html`.
+3.  **Configures Nginx**: Creates `/etc/nginx/conf.d/custom-domain.conf` (slug-based).
+4.  **Secures**: Runs `certbot` to get the SSL certificate.
+5.  **Validates**: Checks syntax and reloads Nginx.
 
 ---
 
