@@ -299,6 +299,58 @@ _(This repeats exactly the same for `sri2` in its own file.)_
 4.  **Secures**: Runs `certbot` to get the SSL certificate.
 5.  **Validates**: Checks syntax and reloads Nginx.
 
+### 6.6 Manual Setup (The Hard Way)
+
+If you prefer doing things manually (or just want to learn), here is how you would set up `sri1` and `sri2` without the script.
+
+**Step 1: Create Web Roots**
+
+```bash
+sudo mkdir -p /var/www/sri1-srinivaskona-life
+sudo mkdir -p /var/www/sri2-srinivaskona-life
+sudo chmod -R 755 /var/www
+```
+
+**Step 2: Create HTML Content**
+
+```bash
+echo "<h1>Hello from SRI1</h1>" | sudo tee /var/www/sri1-srinivaskona-life/index.html
+echo "<h1>Hello from SRI2</h1>" | sudo tee /var/www/sri2-srinivaskona-life/index.html
+```
+
+**Step 3: Create Nginx Configs**
+Create two separate files in `/etc/nginx/conf.d/`:
+
+- `/etc/nginx/conf.d/sri1.conf`:
+  ```nginx
+  server {
+      listen 80;
+      server_name sri1.srinivaskona.life;
+      root /var/www/sri1-srinivaskona-life;
+      index index.html;
+  }
+  ```
+- _(Repeat for `sri2.conf` with `sri2` values)_
+
+**Step 4: Reload & Secure**
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+sudo certbot --nginx -d sri1.srinivaskona.life -d sri2.srinivaskona.life
+```
+
+### 6.7 What is a Slug? (And why do we use it?)
+
+You might notice files named like `sri1-srinivaskona-life`.
+
+- **Definition**: A "Slug" is a sanitized version of a name, safe for file systems and URLs.
+- **Why?**: Linux file systems and Nginx configs can get confused by special characters or too many dots.
+- **Our Rules**: We replace every dot (`.`) with a hyphen (`-`).
+  - Input: `sri1.srinivaskona.life`
+  - Slug: `sri1-srinivaskona-life`
+  - Result: `/var/www/sri1-srinivaskona-life` (Clean, Safe, Standardized).
+
 ---
 
 ## Architectural Request Flow (Visual)
