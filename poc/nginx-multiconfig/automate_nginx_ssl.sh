@@ -18,10 +18,16 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Helper Functions
 log_info() { echo -e "${BLUE}[INFO] $1${NC}"; }
 log_success() { echo -e "${GREEN}[SUCCESS] $1${NC}"; }
 log_warning() { echo -e "${YELLOW}[Exchanged] $1${NC}"; }
 log_error() { echo -e "${RED}[ERROR] $1${NC}"; }
+
+# Report Data
+declare -A REPORT_CONFIG
+declare -A REPORT_SSL
+declare -A REPORT_PATH
 
 echo "----------------------------------------------------------------"
 echo "   Nginx SSL Automation Script (Architect Grade)   "
@@ -30,6 +36,8 @@ echo "----------------------------------------------------------------"
 # 0. System Check & Installation
 echo ""
 log_info "Phase 0: System Check & Installation"
+SERVER_IP=$(curl -s ifconfig.me)
+log_info "Detected Server IP: $SERVER_IP"
 
 # Check Nginx
 if ! command -v nginx &> /dev/null; then
@@ -112,6 +120,20 @@ for DOMAIN in "${DOMAINS[@]}"; do
   echo ""
   log_info ">>> Processing: $DOMAIN"
   
+  # Initialize Report
+  REPORT_CONFIG[$DOMAIN]="[FAIL]"
+  REPORT_SSL[$DOMAIN]="[SKIP]"
+  REPORT_PATH[$DOMAIN]="N/A"
+
+  # DNS Check
+  DOMAIN_IP=$(dig +short "$DOMAIN" | tail -n1)
+  if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
+      log_warning "DNS Mismatch! Domain $DOMAIN points to $DOMAIN_IP, but this server is $SERVER_IP."
+      log_warning "Certbot is likely to fail, but we will proceed (maybe you are testing)."
+  else
+      log_success "DNS Verified: $DOMAIN -> $SERVER_IP"
+  fi
+  
   SLUG=$(echo "$DOMAIN" | tr '.' '-')
   WEB_ROOT="/var/www/$SLUG"
   CONF_FILE="/etc/nginx/conf.d/$SLUG.conf"
@@ -132,9 +154,9 @@ for DOMAIN in "${DOMAINS[@]}"; do
 
   # 2.2 Create Nginx Config (HTTP)
   if [ -f "$CONF_FILE" ]; then
-      log_warning "Config exists: $CONF_FILE"
       if grep -q "ssl_certificate" "$CONF_FILE"; then
-          log_warning "SSL already configured. Skipping overwrite to preserve setup."
+          log_warning "SSL Config exists. Conserving..."
+          REPORT_CONFIG[$DOMAIN]="[KEEP]"
       else
           log_info "Overwriting HTTP config..."
           sudo tee "$CONF_FILE" > /dev/null <<EOF
@@ -147,6 +169,7 @@ server {
 }
 EOF
           log_success "Nginx Config Updated: $CONF_FILE"
+          REPORT_CONFIG[$DOMAIN]="[UPD]"
       fi
   else
       log_info "Creating Nginx HTTP Config..."
@@ -160,6 +183,7 @@ server {
 }
 EOF
       log_success "Nginx Config Created: $CONF_FILE"
+      REPORT_CONFIG[$DOMAIN]="[NEW]"
   fi
 
 done
@@ -184,43 +208,46 @@ echo "----------------------------------------------------------------"
 log_info "Phase 4: SSL Automation (Certbot)"
 echo "----------------------------------------------------------------"
 
-SUCCESS_COUNT=0
 for DOMAIN in "${DOMAINS[@]}"; do
-  log_info "Requesting Certificate for: $DOMAIN"
+  log_info "Checking SSL for: $DOMAIN"
   
-  # Check if cert exists roughly (optional optimization, but certbot is smart enough)
-  
-  sudo certbot --nginx \
-    -d "$DOMAIN" \
-    --non-interactive \
-    --agree-tos \
-    --email "$EMAIL" \
-    --redirect \
-    --keep-until-expiring
-
-  if [ $? -eq 0 ]; then
-      log_success "SSL Configured for $DOMAIN"
-      
-      # Try to find the cert path
-      CERT_PATH="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
-      if [ -f "$CERT_PATH" ]; then
-          log_success "Certificate Location: $CERT_PATH"
-      else
-          # Fallback check (sometimes certbot names it differently if duplicate)
-          log_warning "Certificate installed, but verify path manually in /etc/letsencrypt/live/"
-      fi
-      
-      SUCCESS_COUNT=$((SUCCESS_COUNT+1))
+  # Check if we already have a cert for this domain
+  # We use 'certbot certificates' to see if it's managed
+  if sudo certbot certificates | grep -q "$DOMAIN"; then
+      log_warning "Certificate already exists for $DOMAIN."
+      REPORT_SSL[$DOMAIN]="[EXIST]"
+      REPORT_PATH[$DOMAIN]="/etc/letsencrypt/live/$DOMAIN/fullchain.pem" # Best guess or from certbot output
   else
-      log_error "Certbot failed for $DOMAIN. Proceeding to next..."
+      # Request Cert
+      sudo certbot --nginx \
+        -d "$DOMAIN" \
+        --non-interactive \
+        --agree-tos \
+        --email "$EMAIL" \
+        --redirect \
+        --keep-until-expiring
+
+      if [ $? -eq 0 ]; then
+          log_success "SSL Configured for $DOMAIN"
+          REPORT_SSL[$DOMAIN]="[NEW]"
+          REPORT_PATH[$DOMAIN]="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+      else
+          log_error "Certbot failed for $DOMAIN."
+          REPORT_SSL[$DOMAIN]="[FAIL]"
+      fi
   fi
 done
 
+# 5. Final Report
 echo ""
-echo "----------------------------------------------------------------"
-if [ $SUCCESS_COUNT -eq ${#DOMAINS[@]} ]; then
-    log_success "   Automation Complete! All domains secured.   "
-else
-    log_warning "   Automation Complete! Secured $SUCCESS_COUNT out of ${#DOMAINS[@]} domains.   "
-fi
-echo "----------------------------------------------------------------"
+echo "================================================================"
+echo "   FINAL DEPLOYMENT REPORT"
+echo "================================================================"
+printf "%-30s | %-8s | %-8s | %s\n" "Domain" "Config" "SSL" "Cert Path"
+echo "------------------------------------------------------------------------------------------"
+
+for DOMAIN in "${DOMAINS[@]}"; do
+    printf "%-30s | %-8s | %-8s | %s\n" "$DOMAIN" "${REPORT_CONFIG[$DOMAIN]}" "${REPORT_SSL[$DOMAIN]}" "${REPORT_PATH[$DOMAIN]}"
+done
+echo "================================================================"
+echo ""
