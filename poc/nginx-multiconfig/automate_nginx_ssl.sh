@@ -84,9 +84,25 @@ if [ ${#DOMAINS[@]} -eq 0 ]; then
     exit 0
 fi
 
+# Validation Loop
+VALID_DOMAINS=()
+for D in "${DOMAINS[@]}"; do
+    if [[ "$D" == *"."* ]]; then
+        VALID_DOMAINS+=("$D")
+    else
+        log_error "Skipping invalid domain format (must contain a dot): $D"
+    fi
+done
+DOMAINS=("${VALID_DOMAINS[@]}")
+
+if [ ${#DOMAINS[@]} -eq 0 ]; then
+    log_error "No valid domains to process. Exiting."
+    exit 1
+fi
+
 echo ""
 echo "----------------------------------------------------------------"
-log_info "Processing ${#DOMAINS[@]} domains..."
+log_info "Processing ${#DOMAINS[@]} valid domains..."
 echo "----------------------------------------------------------------"
 
 # 2. Loop through domains for Setup
@@ -101,22 +117,22 @@ for DOMAIN in "${DOMAINS[@]}"; do
   
   # 2.1 Create Content
   if [ -d "$WEB_ROOT" ]; then
-      log_info "Web root already exists: $WEB_ROOT"
+      log_info "Web root exists: $WEB_ROOT"
   else
       log_info "Creating web root..."
       sudo mkdir -p "$WEB_ROOT"
       sudo chmod 755 "$WEB_ROOT"
   fi
   
-  log_info "Generating HTML Content..."
+  log_info "Generating/Updating HTML Content..."
   echo "<html><head><title>$DOMAIN</title></head><body><h1>$DOMAIN ($SLUG)</h1></body></html>" | sudo tee "$HTML_FILE" > /dev/null
-  log_success "HTML File Created: $HTML_FILE"
+  log_success "HTML File Verified: $HTML_FILE"
 
   # 2.2 Create Nginx Config (HTTP)
   if [ -f "$CONF_FILE" ]; then
       log_info "Config exists: $CONF_FILE"
       if grep -q "ssl_certificate" "$CONF_FILE"; then
-          log_info "SSL already configured. Skipping overwrite."
+          log_info "SSL already configured. Skipping overwrite to preserve setup."
       else
           log_info "Overwriting HTTP config..."
           sudo tee "$CONF_FILE" > /dev/null <<EOF
@@ -179,9 +195,9 @@ for DOMAIN in "${DOMAINS[@]}"; do
 
   if [ $? -eq 0 ]; then
       log_success "SSL Configured for $DOMAIN"
-      log_info "Configuration File: /etc/nginx/conf.d/$SLUG.conf"
+      log_info "Configuration File: /etc/nginx/conf.d/$(echo "$DOMAIN" | tr '.' '-').conf"
   else
-      log_error "Certbot failed for $DOMAIN"
+      log_error "Certbot failed for $DOMAIN. Proceeding to next..."
   fi
 done
 
