@@ -8,7 +8,7 @@ This document provides a detailed, step-by-step technical explanation of the tra
 
 **Goal:** Securely route external HTTPS traffic to private application servers.
 
-![Ingress Architecture](architect_flow_ingress_tls.png)
+![Ingress Architecture](images/architect_flow_ingress_tls.png)
 
 ### Step-by-Step Breakdown
 
@@ -37,7 +37,7 @@ This document provides a detailed, step-by-step technical explanation of the tra
 
 **Goal:** Allow private instances to download updates (e.g., `yum update`) without exposing them to inbound attacks.
 
-![Egress Architecture](architect_flow_egress_nat.png)
+![Egress Architecture](images/architect_flow_egress_nat.png)
 
 ### Step-by-Step Breakdown
 
@@ -64,7 +64,7 @@ This document provides a detailed, step-by-step technical explanation of the tra
 
 **Goal:** Provide secure SSH access to private servers for administrators.
 
-![Access Architecture](architect_flow_access_bastion.png)
+![Access Architecture](images/architect_flow_access_bastion.png)
 
 ### Step-by-Step Breakdown
 

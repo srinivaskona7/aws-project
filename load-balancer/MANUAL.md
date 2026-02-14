@@ -34,7 +34,7 @@ awk 'BEGIN {c=0} /BEGIN CERTIFICATE/ {c++} { out="cert" c ".pem"; print > out }'
 
 **Goal**: Create a secure network with public and private zones.
 
-![VPC Map](manual_step_1_vpc_map.png)
+![VPC Map](images/manual_step_1_vpc_map.png)
 
 ### Step 1.1: Create VPC
 
@@ -105,7 +105,7 @@ Go to **Subnets** -> **Create subnet**. Select your VPC.
 
 **Goal**: Automatically scale servers based on load.
 
-![ASG Config](manual_step_3_asg_config.png)
+![ASG Config](images/manual_step_3_asg_config.png)
 
 ### Step 3.1: Launch Template
 
@@ -141,7 +141,7 @@ Go to **Subnets** -> **Create subnet**. Select your VPC.
 
 **Goal**: Secure traffic distribution.
 
-![ALB and DNS](manual_step_4_alb_dns.png)
+![ALB and DNS](images/manual_step_4_alb_dns.png)
 
 ### Step 4.1: Import Certificate (ACM)
 

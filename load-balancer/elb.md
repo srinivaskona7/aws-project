@@ -18,7 +18,7 @@ The architecture follows AWS best practices for security and high availability:
 
 ### Traffic Flow Diagram
 
-![Architecture Diagram](architecture-detailed.png)
+![Architecture Diagram](images/architecture-detailed.png)
 
 ### Request Flow Explained
 

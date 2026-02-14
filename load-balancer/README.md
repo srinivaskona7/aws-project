@@ -5,7 +5,7 @@ This project automates the deployment of a highly available, secure, and scalabl
 ## 📑 Table of Contents
 
 1.  [High-Level Architecture](#-high-level-architecture)
-2.  [Architectural Provisioning Flow (Execution Order)](#-architectural-provisioning-flow-execution-order)
+2.  [Architectural Provisioning Flow](#-architectural-provisioning-flow-execution-order)
 3.  [Detailed Request Flow](#-detailed-request-flow)
 4.  [Resource Definitions](#-resource-definitions)
 5.  [AWS Credentials & Configuration](#-aws-credentials--configuration)
@@ -15,11 +15,19 @@ This project automates the deployment of a highly available, secure, and scalabl
 9.  [Technical Deep Dive](#-technical-deep-dive-how-alb-asg-and-target-groups-work-together)
 10. [Detailed Cost Analysis](#-detailed-cost-analysis-estimated)
 
+### 📘 Additional Guides
+
+| Guide                                      | Description                                                   |
+| :----------------------------------------- | :------------------------------------------------------------ |
+| [aws-console.md](aws-console.md)           | Step-by-step manual setup via AWS Management Console          |
+| [aws-cli-commands.md](aws-cli-commands.md) | Full AWS CLI commands to build the infrastructure             |
+| [workflow.md](workflow.md)                 | Detailed traffic flow diagrams with step-by-step explanations |
+
 ## 🌟 High-Level Architecture
 
 This diagram illustrates the overall architecture, from user request to backend processing.
 
-![AWS Architecture Diagram](aws_architecture_diagram.png)
+![AWS Architecture Diagram](images/aws_architecture_diagram.png)
 
 ---
 
@@ -52,7 +60,7 @@ This section breaks down the request lifecycle into logical steps.
 
 **Visual Flow:** `User` -> `Route 53` -> `IGW` -> `ALB`
 
-![Ingress Flow](aws_flow_step_1_ingress.png)
+![Ingress Flow](images/aws_flow_step_1_ingress.png)
 
 1.  **User Request**: A user visits `https://garden.srinivaskona.life`.
 2.  **DNS Resolution (Route 53)**: AWS Route 53 resolves the domain name to the IP addresses of the Application Load Balancer (ALB).
@@ -63,7 +71,7 @@ This section breaks down the request lifecycle into logical steps.
 
 **Visual Flow:** `ALB` -> `Target Group` -> `ASG` -> `EC2`
 
-![Scaling Flow](aws_flow_step_2_scaling.png)
+![Scaling Flow](images/aws_flow_step_2_scaling.png)
 
 5.  **Traffic Routing (Target Group)**: The ALB forwards the decrypted request to a logical Target Group.
 6.  **Load Balancing**: The Target Group selects a healthy EC2 instance from the Auto Scaling Group (ASG).
@@ -74,7 +82,7 @@ This section breaks down the request lifecycle into logical steps.
 
 **Visual Flow:** `EC2` -> `NAT Gateway` -> `IGW` -> `Internet`
 
-![Egress Flow](aws_flow_step_3_egress.png)
+![Egress Flow](images/aws_flow_step_3_egress.png)
 
 9.  **Outbound Requests**: If a Private EC2 instance needs to access the internet (e.g., for software updates), it cannot go directly.
 10. **NAT Gateway**: The traffic is routed to a NAT Gateway in the Public Subnet.
@@ -249,16 +257,51 @@ dig garden.srinivaskona.life
 ## 📂 Project Structure
 
 ```
-├── alb.tf                # Load Balancer & Listeners configuration
-├── autoscaling.tf        # Launch Template & Auto Scaling Group
-├── deploy_garden.sh      # Automation script for deployment
-├── instances.tf          # EC2 Instance definitions (Bastion)
-├── outputs.tf            # Terraform Outputs (DNS, Nameservers)
-├── route53.tf            # Route 53 Zone & Records
-├── security.tf           # Security Groups (ALB, App, Bastion)
-├── user_data.sh          # Boot script for EC2 instances
-├── variables.tf          # Configuration variables (Region, CIDRs)
-└── vpc.tf                # VPC, Subnets, Gateways
+load-balancer/
+│
+├── 📄 README.md                  # High-level overview (this file)
+├── 📄 aws-console.md             # Manual AWS Console setup guide
+├── 📄 aws-cli-commands.md        # AWS CLI commands reference
+├── 📄 workflow.md                # Traffic flow diagrams & explanations
+├── 📄 MANUAL.md                  # Additional manual notes
+├── 📄 elb.md                     # ELB deep-dive notes
+│
+├── 🔧 Terraform Modules
+│   ├── provider.tf               # AWS Provider configuration
+│   ├── variables.tf              # Input variables (Region, CIDRs, etc.)
+│   ├── terraform.tfvars          # Variable values
+│   ├── vpc.tf                    # VPC, IGW, NAT Gateway
+│   ├── subnets.tf                # Subnets & Route Tables
+│   ├── security.tf               # Security Groups (ALB, App, Bastion)
+│   ├── acm.tf                    # SSL Certificate (ACM Import)
+│   ├── alb.tf                    # Load Balancer & Listeners
+│   ├── instances.tf              # Bastion Host, Launch Template, ASG
+│   ├── route53.tf                # DNS Zone & Records
+│   └── outputs.tf                # Terraform Outputs
+│
+├── 🛠️ Scripts
+│   ├── deploy_garden.sh          # One-click deployment automation
+│   ├── process_certs.sh          # Certificate processing utility
+│   └── user_data.sh              # EC2 boot script (Apache setup)
+│
+├── 🔒 Certificates
+│   ├── certs/                    # Processed PEM files (body, chain, key)
+│   └── raw-certs/                # Original certificate files
+│
+└── 🖼️ Images
+    ├── images/
+    │   ├── aws_architecture_diagram.png
+    │   ├── aws_flow_step_1_ingress.png
+    │   ├── aws_flow_step_2_scaling.png
+    │   ├── aws_flow_step_3_egress.png
+    │   ├── architect_flow_ingress_tls.png
+    │   ├── architect_flow_egress_nat.png
+    │   ├── architect_flow_access_bastion.png
+    │   ├── architecture.png
+    │   ├── architecture-detailed.png
+    │   ├── manual_step_1_vpc_map.png
+    │   ├── manual_step_3_asg_config.png
+    │   └── manual_step_4_alb_dns.png
 ```
 
 ---
