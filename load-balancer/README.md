@@ -193,13 +193,29 @@ If you prefer running Terraform manually:
    aws acm import-certificate --certificate fileb://cert.crt --private-key fileb://key.key
    ```
 
-3. **Apply Configuration:**
+3. **Validate Configuration:**
+
+   ```bash
+   terraform validate
+   ```
+
+   - **Expected**: `Success! The configuration is valid.`
+
+4. **Preview Changes (Dry Run):**
+
+   ```bash
+   terraform plan
+   ```
+
+   - Review the output to confirm the resources that will be created.
+
+5. **Apply Configuration:**
 
    ```bash
    terraform apply
    ```
 
-4. **Update DNS:**
+6. **Update DNS:**
    - Copy the `nameservers` output from Terraform.
    - Update your domain registrar (e.g., GoDaddy) with these checks.
 
