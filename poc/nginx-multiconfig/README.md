@@ -216,7 +216,11 @@ The final report of the automation script shows the exact path under `Web Root`.
     - **Add** CSS/JS files (e.g., `style.css`, `app.js`).
     - Nginx will serve these immediately.
 
-**Note on Automation**: The script is **idempotent**. If you run it again (e.g., to add a new domain), it will **NOT** overwrite your existing `index.html` or custom files. It only generates a default page if the folder is empty.
+**Note on Automation**: The script is **idempotent**.
+
+- If `index.html` exists and has content, the script **SKIPS** it (preserving your work).
+- If `index.html` is missing or empty, the script **REGENERATES** the default "Hello" page.
+- You can safely re-run the script anytime.
 
 ---
 

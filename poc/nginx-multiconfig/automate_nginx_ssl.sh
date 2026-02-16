@@ -197,16 +197,21 @@ for DOMAIN in "${DOMAINS[@]}"; do
   CONF_FILE="/etc/nginx/conf.d/$SLUG.conf"
   HTML_FILE="$WEB_ROOT/index.html"
   
-  # 4.1 Content Generation (Idempotent)
+  # 4.1 Content Generation (Idempotent & Valid)
   if [ ! -d "$WEB_ROOT" ]; then
       sudo mkdir -p "$WEB_ROOT"
       sudo chmod 755 "$WEB_ROOT"
   fi
   
-  if [ -f "$HTML_FILE" ]; then
-      log_warning "Content exists ($HTML_FILE). Skipping generation to preserve custom files."
+  # Check if file exists AND has content (> 0 bytes)
+  if [ -s "$HTML_FILE" ]; then
+      log_warning "Valid content found ($HTML_FILE). Skipping generation to preserve custom files."
   else
-      # Dynamic "Hello" Page (Only if not exists)
+      if [ -f "$HTML_FILE" ]; then
+          log_warning "Empty file found at $HTML_FILE. Regenerating default content..."
+      fi
+      
+      # Dynamic "Hello" Page (Only if missing or empty)
       sudo tee "$HTML_FILE" > /dev/null <<EOF
 <html>
 <head><title>$DOMAIN</title></head>
