@@ -210,11 +210,13 @@ The final report of the automation script shows the exact path under `Web Root`.
 **How to Edit:**
 
 1.  SSH into your server.
-2.  Use `nano` or `vi` to edit the file:
-    ```bash
-    sudo nano /var/www/sri1-srinivaskona-life/index.html
-    ```
-3.  Save and exit (Ctrl+O, Enter, Ctrl+X). The changes are live immediately.
+2.  Navigate to your folder: `cd /var/www/sri1-srinivaskona-life`
+3.  **Add/Edit Files**:
+    - **Overwrite** `index.html` with your own code.
+    - **Add** CSS/JS files (e.g., `style.css`, `app.js`).
+    - Nginx will serve these immediately.
+
+**Note on Automation**: The script is **idempotent**. If you run it again (e.g., to add a new domain), it will **NOT** overwrite your existing `index.html` or custom files. It only generates a default page if the folder is empty.
 
 ---
 

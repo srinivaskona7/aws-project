@@ -197,24 +197,29 @@ for DOMAIN in "${DOMAINS[@]}"; do
   CONF_FILE="/etc/nginx/conf.d/$SLUG.conf"
   HTML_FILE="$WEB_ROOT/index.html"
   
-  # 4.1 Content Generation
+  # 4.1 Content Generation (Idempotent)
   if [ ! -d "$WEB_ROOT" ]; then
       sudo mkdir -p "$WEB_ROOT"
       sudo chmod 755 "$WEB_ROOT"
   fi
   
-  # Dynamic "Hello" Page
-  sudo tee "$HTML_FILE" > /dev/null <<EOF
+  if [ -f "$HTML_FILE" ]; then
+      log_warning "Content exists ($HTML_FILE). Skipping generation to preserve custom files."
+  else
+      # Dynamic "Hello" Page (Only if not exists)
+      sudo tee "$HTML_FILE" > /dev/null <<EOF
 <html>
 <head><title>$DOMAIN</title></head>
 <body>
     <h1>Hello $DOMAIN</h1>
     <p>Served by Nginx on $SERVER_IP</p>
     <p>Generated at $(date)</p>
+    <p><em>(You can replace this file with your own HTML/CSS/JS)</em></p>
 </body>
 </html>
 EOF
-  log_success "Content Updated: $HTML_FILE"
+      log_success "Content Created: $HTML_FILE"
+  fi
 
   # 4.2 Nginx Config
   # Always write fresh to ensure state matches input
