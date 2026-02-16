@@ -12,8 +12,10 @@ This document serves as the **Single Source of Truth** for the deployment, manag
 4.  [Phase 4: Manual Configuration (The Core)](#phase-4-manual-configuration-the-core)
 5.  [Phase 5: SSL Security (The Shield)](#phase-5-ssl-security-the-shield)
 6.  [Phase 6: Verification](#phase-6-verification)
-7.  [Appendix: Automated "Fast Track"](#appendix-automated-fast-track-the-script)
-8.  [Architectural Request Flow (Visual)](#architectural-request-flow-visual)
+7.  [Phase 7: Post-Deployment & Content Editing](#7-post-deployment-how-to-edit-content)
+8.  [Appendix A: Automated "Fast Track" (The Script)](#appendix-automated-fast-track-the-script)
+9.  [Appendix B: Architectural Request Flow](#architectural-request-flow-visual)
+10. [Appendix C: Design Philosophy (v3.0)](#appendix-b-system-enhancements-v20)
 
 ---
 
@@ -96,21 +98,42 @@ We use a concept called a **Slug** — a sanitized version of a hostname.
 - **Why?**: File systems dislike dots (`.`) in folder names.
 - **Rule**: `sri1.srinivaskona.life` -> `sri1-srinivaskona-life`
 
-### 4.2 Create Web Roots & HTML Content
+### 4.2 Create Web Roots & Content (The "Smart" Way)
 
 First, create the folders where your actual website files will live.
 
+**Goal**: Create content only if it doesn't exist (Idempotency), and make it helpful.
+
 ```bash
-# Create Directories (Slugs)
+# 1. Create Directories (Slugs)
 sudo mkdir -p /var/www/sri1-srinivaskona-life
 sudo mkdir -p /var/www/sri2-srinivaskona-life
 
-# Set Permissions
+# 2. Set Permissions
 sudo chmod -R 755 /var/www
 
-# Create Sample HTML (Content)
-echo "<h1>Hello from SRI1 (Manual)</h1>" | sudo tee /var/www/sri1-srinivaskona-life/index.html
-echo "<h1>Hello from SRI2 (Manual)</h1>" | sudo tee /var/www/sri2-srinivaskona-life/index.html
+# 3. Create Smart HTML (Only if file doesn't exist)
+#    This manual command mimics the script's logic.
+
+FILE_SRI1="/var/www/sri1-srinivaskona-life/index.html"
+if [ ! -s "$FILE_SRI1" ]; then
+    echo "Creating $FILE_SRI1..."
+    sudo tee "$FILE_SRI1" > /dev/null <<EOF
+<html>
+<head><title>sri1.srinivaskona.life</title></head>
+<body>
+    <h1>Hello from SRI1 (Manual)</h1>
+    <hr>
+    <p><strong>Want to edit this page?</strong></p>
+    <p>This file is located at: <code>$FILE_SRI1</code></p>
+</body>
+</html>
+EOF
+else
+    echo "Skipping $FILE_SRI1 (File exists and has content)."
+fi
+
+# Repeat for SRI2...
 ```
 
 ### 4.3 Create Nginx Server Blocks
@@ -224,7 +247,7 @@ The final report of the automation script shows the exact path under `Web Root`.
 
 ---
 
-## Appendix: Automated "Fast Track" (The Script)
+## Appendix A: Automated "Fast Track" (The Script)
 
 If you have many domains or want to skip the manual typing, use our **Automation Script**.
 
@@ -246,7 +269,7 @@ It produces the exact same result as the manual steps above, instantly.
 
 ---
 
-## Architectural Request Flow (Visual)
+## Appendix B: Architectural Request Flow (Visual)
 
 This diagram illustrates exactly how a request for `sri1` is routed differently from `sri2`.
 
@@ -263,7 +286,7 @@ This diagram illustrates exactly how a request for `sri1` is routed differently 
 
 ---
 
-## Appendix B: System Enhancements (v2.0)
+## Appendix C: Design Philosophy (v3.0)
 
 This section documents the major architectural shift and tooling upgrades applied to this project.
 
