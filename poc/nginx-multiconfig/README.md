@@ -194,6 +194,28 @@ server {
 **Q: Can I access via IP?**
 **A: No.** SSL certs are tied to domains, not IPs. The browser will block it or show a warning.
 
+## 7. Post-Deployment: How to Edit Content
+
+Your website files are located in `/var/www/[domain-slug]`. You can edit them anytime to update your site.
+
+**Finding Your Location:**
+The final report of the automation script shows the exact path under `Web Root`.
+
+**Example:**
+
+- Domain: `sri1.srinivaskona.life`
+- Slug: `sri1-srinivaskona-life`
+- Path: `/var/www/sri1-srinivaskona-life/index.html`
+
+**How to Edit:**
+
+1.  SSH into your server.
+2.  Use `nano` or `vi` to edit the file:
+    ```bash
+    sudo nano /var/www/sri1-srinivaskona-life/index.html
+    ```
+3.  Save and exit (Ctrl+O, Enter, Ctrl+X). The changes are live immediately.
+
 ---
 
 ## Appendix: Automated "Fast Track" (The Script)
@@ -287,14 +309,14 @@ You can test the enhanced script logic (Dry Run style, without actual Certbot if
 **Expected Output (Summary Table)**
 
 ```text
-================================================================
-   FINAL DEPLOYMENT REPORT
-================================================================
-Domain                         | Config   | SSL      | Cert Path
-----------------------------------------------------------------
-sri1.srinivaskona.life         | [KEEP]   | [EXIST]  | /etc/letsencrypt/live/sri1...
-sri2.srinivaskona.life         | [KEEP]   | [EXIST]  | /etc/letsencrypt/live/sri2...
-================================================================
+========================================================================
+   FINAL DEPLOYMENT REPORT (v3.0)
+========================================================================
+Domain                         | Config   | SSL      | Content    | Web Root
+---------------------------------------------------------------------------------------------------
+sri1.srinivaskona.life         | [OK]     | [OK]     | [MATCH]    | /var/www/sri1-srinivaskona-life
+sri2.srinivaskona.life         | [OK]     | [OK]     | [MATCH]    | /var/www/sri2-srinivaskona-life
+========================================================================
 ```
 
 ---

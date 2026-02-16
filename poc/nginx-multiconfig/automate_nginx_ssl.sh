@@ -30,6 +30,7 @@ log_error() { echo -e "${RED}[ERROR] $1${NC}"; }
 declare -A REPORT_CONFIG
 declare -A REPORT_SSL
 declare -A REPORT_CONTENT
+declare -A REPORT_PATH
 
 echo "----------------------------------------------------------------"
 echo "   Nginx SSL Automation Script (v3.0 - Robust)   "
@@ -189,6 +190,7 @@ for DOMAIN in "${DOMAINS[@]}"; do
   REPORT_CONFIG[$DOMAIN]="[FAIL]"
   REPORT_SSL[$DOMAIN]="[SKIP]"
   REPORT_CONTENT[$DOMAIN]="[WAIT]"
+  REPORT_PATH[$DOMAIN]="$WEB_ROOT"
 
   SLUG=$(echo "$DOMAIN" | tr '.' '-')
   WEB_ROOT="/var/www/$SLUG"
@@ -285,11 +287,11 @@ echo ""
 echo "=========================================================================="
 echo "   FINAL DEPLOYMENT REPORT (v3.0)"
 echo "=========================================================================="
-printf "%-30s | %-8s | %-8s | %-10s\n" "Domain" "Config" "SSL" "Content"
-echo "--------------------------------------------------------------------------"
+printf "%-30s | %-8s | %-8s | %-10s | %s\n" "Domain" "Config" "SSL" "Content" "Web Root"
+echo "---------------------------------------------------------------------------------------------------"
 
 for DOMAIN in "${DOMAINS[@]}"; do
-    printf "%-30s | %-8s | %-8s | %-10s\n" "$DOMAIN" "${REPORT_CONFIG[$DOMAIN]}" "${REPORT_SSL[$DOMAIN]}" "${REPORT_CONTENT[$DOMAIN]}"
+    printf "%-30s | %-8s | %-8s | %-10s | %s\n" "$DOMAIN" "${REPORT_CONFIG[$DOMAIN]}" "${REPORT_SSL[$DOMAIN]}" "${REPORT_CONTENT[$DOMAIN]}" "${REPORT_PATH[$DOMAIN]}"
 done
 echo "=========================================================================="
 echo ""
