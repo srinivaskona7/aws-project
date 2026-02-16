@@ -1,0 +1,410 @@
+:root {
+    --bg-color: #1e1e1e;
+    --sidebar-bg: rgba(37, 37, 38, 0.85); /* Semi-transparent */
+    --terminal-bg: rgba(30, 30, 30, 0.95);
+    --header-bg: rgba(45, 45, 45, 0.85);
+    --status-bar-bg: #007acc;
+    --text-color: #d4d4d4;
+    --accent-color: #007acc;
+    --folder-color: #dcb67a;
+    --file-color: #d4d4d4;
+    --cmd-prompt-user: #4ec9b0;
+    --cmd-prompt-host: #ce9178;
+    --cmd-prompt-path: #569cd6;
+    --selection-bg: #264f78;
+    --border-color: rgba(62, 62, 66, 0.5);
+    --font-mono: 'Fira Code', monospace;
+    --font-ui: 'Inter', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: #121212; /* Darker than --terminal-bg for contrast */
+    background-image: radial-gradient(circle at 50% 50%, #1e1e1e 0%, #000000 100%);
+    color: var(--text-color);
+    font-family: var(--font-ui);
+    height: 100vh;
+    overflow: hidden;
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+}
+
+.app-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    width: 250px;
+    background-color: var(--sidebar-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+}
+
+/* ... existing sidebar-header, sidebar-actions logic same, just updating context ... */
+
+.sidebar-header {
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #bbbbbb;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-actions .icon-btn {
+    background: none;
+    border: none;
+    color: #bbbbbb;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+.sidebar-actions .icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.file-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding-top: 5px;
+}
+
+.tree-item {
+    display: flex;
+    align-items: center;
+    padding: 3px 10px;
+    cursor: pointer;
+    color: #cccccc;
+    transition: background-color 0.1s;
+}
+
+.tree-item:hover {
+    background-color: rgba(255, 255, 255, 0.05); /* Softer hover */
+}
+
+.tree-item.active {
+    background-color: rgba(55, 55, 61, 0.6);
+    color: #fff;
+}
+
+/* ... tree-item arrows/icons logic same ... */
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--terminal-bg);
+    /* backdrop-filter not strictly needed on solid bg, but consistent if image behind */
+}
+
+.terminal-header {
+    height: 35px;
+    background-color: var(--header-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    padding-left: 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tab {
+    height: 100%;
+    padding: 0 15px;
+    display: flex;
+    align-items: center;
+    background-color: rgba(45, 45, 45, 0.4); /* Transparent tab */
+    color: #969696;
+    cursor: pointer;
+    border-right: 1px solid var(--border-color);
+    min-width: 150px;
+    position: relative;
+    backdrop-filter: blur(5px);
+}
+
+.tab.active {
+    background-color: var(--terminal-bg); /* Opaque for active tab */
+    color: #fff;
+    border-top: 2px solid var(--accent-color);
+}
+
+.tab .icon {
+    margin-right: 8px;
+}
+
+.tab .close-tab {
+    margin-left: auto;
+    font-size: 14px;
+    opacity: 0;
+    border-radius: 3px;
+    padding: 0 4px;
+}
+
+.tab:hover .close-tab {
+    opacity: 1;
+}
+
+.tab .close-tab:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.header-actions {
+    margin-left: auto;
+    padding-right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.env-indicator {
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    color: #a0a0a0;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.env-indicator .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #888;
+    margin-right: 6px;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.env-indicator.connected .status-dot {
+    background-color: #10b981;
+    box-shadow: 0 0 6px #10b981;
+}
+
+.env-indicator.aws .status-dot {
+    background-color: #ff9900; /* AWS Orange */
+    box-shadow: 0 0 6px #ff9900;
+}
+
+.header-actions .icon-btn {
+    background: none;
+    border: none;
+    color: #bbbbbb;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.header-actions .icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Terminal Window */
+.terminal-window {
+    flex: 1;
+    background-color: transparent; /* Xterm handles bg */
+    padding: 10px 0 0 10px;
+    overflow: hidden;
+    position: relative;
+    /* display: block;  <-- Controlled by JS (block/none) */
+}
+
+#terminal-logs {
+    background-color: #1e1e1e; /* Match main bg */
+}
+
+/* Hide old custom terminal implementation styles */
+.terminal-output, .input-line, .prompt, .cursor-block {
+    display: none !important; 
+}
+
+.prompt {
+    margin-right: 8px;
+    white-space: nowrap;
+}
+
+.prompt .user { color: var(--cmd-prompt-user); font-weight: bold; }
+.prompt .host { color: var(--cmd-prompt-host); font-weight: bold; }
+.prompt .path { color: var(--cmd-prompt-path); font-weight: bold; }
+
+#commandInput {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    flex: 1;
+    outline: none;
+    caret-color: transparent; /* custom cursor */
+}
+
+/* Custom Block Cursor Data */
+.cursor-block {
+    display: inline-block;
+    width: 9px;
+    height: 16px;
+    background-color: #d4d4d4;
+    animation: blink 1s step-end infinite;
+    position: absolute;
+    /* JS will need to position this properly if we want a true moving block cursor, 
+       but for now let's just use standard caret or a simple end-of-line block */
+    pointer-events: none;
+    display: none; /* Hiding custom for now to use native caret for better UX initially, or enable */
+}
+
+/* Status Bar */
+.status-bar {
+    height: 22px;
+    background-color: var(--status-bar-bg);
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 11px;
+}
+
+.status-left, .status-right {
+    display: flex;
+    gap: 15px;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.status-item.notification {
+    animation: pulse-green 2s infinite;
+}
+
+/* Animations */
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+@keyframes pulse-green {
+    0% { color: #fff; }
+    50% { color: #8aff8a; }
+    100% { color: #fff; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+    background: #424242;
+    border: 2px solid var(--bg-color); /* padding effect */
+    border-radius: 10px;
+}
+
+/* ... existing scrollbar styles ... */
+
+/* Connection Overlay */
+#connection-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.connection-card {
+    background-color: #252526;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    width: 350px;
+    border: 1px solid #3e3e42;
+    text-align: center;
+}
+
+.connection-card h2 {
+    color: #fff;
+    margin-bottom: 20px;
+    font-weight: 400;
+}
+
+.input-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.input-group label {
+    display: block;
+    color: #ccc;
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 8px 10px;
+    background-color: #3c3c3c;
+    border: 1px solid #3e3e42;
+    color: #fff;
+    border-radius: 4px;
+    outline: none;
+    font-family: var(--font-mono);
+}
+
+.input-group input:focus {
+    border-color: #007acc;
+}
+
+.connect-btn {
+    width: 100%;
+    padding: 10px;
+    background-color: #007acc;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 10px;
+    transition: background-color 0.2s;
+}
+
+.connect-btn:hover {
+    background-color: #0062a3;
+}
+
+.error-msg {
+    color: #f44336;
+    font-size: 12px;
+    margin-top: 10px;
+    min-height: 18px;
+}

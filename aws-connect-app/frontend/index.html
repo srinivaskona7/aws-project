@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Srinivas Terminal App</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Xterm.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <!-- Socket.io -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Using a simple SVG icon set approach inline or via CSS for zero dependencies -->
+</head>
+<body>
+    <div class="app-container">
+        <!-- Connection Overlay -->
+        <div id="connection-overlay">
+            <div class="connection-card">
+                <h2>Connect to Server</h2>
+                <div class="input-group">
+                    <label for="server-host">Host / IP</label>
+                    <input type="text" id="server-host" placeholder="e.g. localhost or 54.x.x.x" value="localhost">
+                </div>
+                <div class="input-group">
+                    <label for="server-port">Port</label>
+                    <input type="number" id="server-port" placeholder="8099" value="8099">
+                </div>
+                <button class="connect-btn" id="connectBtn">Connect</button>
+                <div class="error-msg" id="connectionError"></div>
+            </div>
+        </div>
+
+        <!-- Sidebar: File Explorer -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span class="explorer-title">EXPLORER</span>
+                <div class="sidebar-actions">
+                    <button class="icon-btn" title="New File">+</button>
+                    <button class="icon-btn" title="Refresh">↻</button>
+                    <button class="icon-btn" title="Collapse All">-</button>
+                </div>
+            </div>
+            <div class="file-tree" id="fileTree">
+                <!-- Dynamically populated by JS -->
+                <div class="tree-item folder expanded" data-path="project-root">
+                    <span class="arrow">▼</span>
+                    <span class="icon folder-icon">📁</span>
+                    <span class="label">aws-project</span>
+                </div>
+                <div class="tree-children" id="root-children">
+                    <!-- Example static content for initial load -->
+                    <div class="tree-item file" data-path="aws-project/README.md">
+                        <span class="indent"></span>
+                        <span class="icon file-icon">📄</span>
+                        <span class="label">README.md</span>
+                    </div>
+                    <div class="tree-item file" data-path="aws-project/main.tf">
+                        <span class="indent"></span>
+                        <span class="icon file-icon">⚡</span>
+                        <span class="label">main.tf</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="footer-item">
+                    <span class="icon">⚙️</span> Settings
+                </div>
+                <div class="footer-item user-profile">
+                    <span class="icon">👤</span> Srinivas
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Tabs / Header -->
+            <header class="terminal-header">
+                <div class="tab active" id="tab-terminal">
+                    <span class="icon">⚡</span>
+                    <span class="tab-title">Terminal - Node 1</span>
+                </div>
+                <div class="tab" id="tab-logs">
+                    <span class="icon">🐳</span>
+                    <span class="tab-title">Docker Logs</span>
+                </div>
+                <div class="header-actions">
+                    <div class="env-indicator" id="envIndicator">
+                        <span class="env-text">Connecting...</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Terminal Windows -->
+            <div class="terminal-window active" id="terminal">
+                <!-- xterm.js will mount here -->
+            </div>
+            <div class="terminal-window" id="terminal-logs" style="display: none;">
+                <!-- logs xterm.js will mount here -->
+            </div>
+            
+            <!-- Status Bar -->
+            <footer class="status-bar">
+                <div class="status-left">
+                    <span class="status-item"><span class="icon">master*</span></span>
+                    <span class="status-item">0 errors, 0 warnings</span>
+                </div>
+                <div class="status-right">
+                    <span class="status-item">Ln 12, Col 45</span>
+                    <span class="status-item">UTF-8</span>
+                    <span class="status-item">JavaScript</span>
+                    <span class="status-item notification">AWS Connected ●</span>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
