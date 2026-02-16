@@ -258,14 +258,18 @@ The script has been upgraded to handle complex multi-domain scenarios robustly.
 
 **New Capabilities:**
 
-- **DNS Pre-Check**: Verifies `domain -> server_ip` before running Certbot.
-  - _Pass_: Green Success message.
-  - _Fail_: Warning log (preserves execution for testing).
-- **Robust Multi-Parameter Loop**:
-  - Usage: `./script.sh domain1 domain2 domain3`
-  - Each domain is processed independently.
+- **Global DNS Wait Loop (v3.0)**:
+  - Waits for **ALL** input domains to propagate before starting ANY configuration.
+  - Parallel validation ensures the entire batch is ready.
+  - Timeout: 5 minutes (30 retries x 10s).
+- **Idempotency & Cleanup (v3.0)**:
+  - **Self-Healing**: If you run `./script.sh domain1`, it automatically **REMOVES** configs for domains not in the list (e.g., if you previously had `domain2`).
+  - **Archiving**: Old web roots are moved to `/var/www/archive/` instead of being deleted permanently.
+- **Post-SSL Verification**:
+  - Validates HTTPS content matches the expected "Hello [domain]" string.
+  - Updates the final report with [MATCH] or [MISMATCH].
 - **Detailed Summary Report**:
-  - A tabular output at the end showing the status of Config, SSL, and Cert Path for _every_ domain.
+  - A tabular output at the end showing the status of Config, SSL, and Content Verification for _every_ domain.
 
 ### 3. Verification
 
