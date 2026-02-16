@@ -190,12 +190,13 @@ for DOMAIN in "${DOMAINS[@]}"; do
   REPORT_CONFIG[$DOMAIN]="[FAIL]"
   REPORT_SSL[$DOMAIN]="[SKIP]"
   REPORT_CONTENT[$DOMAIN]="[WAIT]"
-  REPORT_PATH[$DOMAIN]="$WEB_ROOT"
 
   SLUG=$(echo "$DOMAIN" | tr '.' '-')
   WEB_ROOT="/var/www/$SLUG"
   CONF_FILE="/etc/nginx/conf.d/$SLUG.conf"
   HTML_FILE="$WEB_ROOT/index.html"
+  
+  REPORT_PATH[$DOMAIN]="$WEB_ROOT"
   
   # 4.1 Content Generation (Idempotent & Valid)
   if [ ! -d "$WEB_ROOT" ]; then
