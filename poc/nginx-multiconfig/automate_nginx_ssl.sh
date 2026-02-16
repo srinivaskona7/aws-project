@@ -219,6 +219,9 @@ for DOMAIN in "${DOMAINS[@]}"; do
     <h1>Hello $DOMAIN</h1>
     <p>Served by Nginx on $SERVER_IP</p>
     <p>Generated at $(date)</p>
+    <hr>
+    <p><strong>Want to edit this page?</strong></p>
+    <p>This file is located at on your server: <code>$HTML_FILE</code></p>
     <p><em>(You can replace this file with your own HTML/CSS/JS)</em></p>
 </body>
 </html>
