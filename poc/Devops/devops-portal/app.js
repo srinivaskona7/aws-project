@@ -95,6 +95,8 @@ const containers = require('./routes/containers');
 const services = require('./routes/services');
 const terminal = require('./routes/terminal');
 const advanced = require('./routes/advanced');
+const newServices = require('./routes/new-services');
+const moreServices = require('./routes/more-services');
 
 app.use('/api', requireAuth, awsCore);
 app.use('/api', requireAuth, infrastructure);
@@ -102,6 +104,8 @@ app.use('/api', requireAuth, containers);
 app.use('/api', requireAuth, services);
 app.use('/api', requireAuth, terminal);
 app.use('/api', requireAuth, advanced);
+app.use('/api', requireAuth, newServices);
+app.use('/api', requireAuth, moreServices);
 
 // SSH terminal WebSocket (separate path)
 const terminalHandler = require('./routes/terminal-ws');

@@ -534,5 +534,934 @@ const Portal = (() => {
     init();
   }
 
-  return { logout, loadResources, clearCreds, switchTab, toggleConsole, clearConsole, ec2, eks, asg, terminal, nginx, docker, k8s, helm, s3, iam, secrets, lambda, dns, templates, cicd, cwlogs, cost, audit };
+  // ===== CLOUDFORMATION =====
+  const cfn = {
+    async listStacks() {
+      log('[CFN] Listing stacks...', 'cmd');
+      try {
+        const data = await api('GET', '/api/cfn/stacks');
+        const tbody = document.getElementById('cfn-stacks-tbody');
+        tbody.innerHTML = (data.stacks||[]).map(s => `<tr>
+          <td style="color:var(--blue)">${escHtml(s.name)}</td>
+          <td><span class="badge badge-${s.status&&s.status.includes('COMPLETE')?'green':s.status&&s.status.includes('FAIL')?'red':'yellow'}">${escHtml(s.status||'')}</span></td>
+          <td style="color:var(--text3)">${s.created?new Date(s.created).toLocaleDateString():'—'}</td>
+          <td style="color:var(--text3)">${s.updated?new Date(s.updated).toLocaleDateString():'—'}</td>
+          <td><button class="btn btn-secondary" onclick="document.getElementById('cfn-stack-name').value='${escHtml(s.name)}'" style="padding:2px 8px;font-size:10px">SELECT</button></td>
+        </tr>`).join('') || '<tr><td colspan="5" style="color:var(--text3);text-align:center">No stacks</td></tr>';
+        toast(`${(data.stacks||[]).length} stacks loaded`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async deploy() {
+      clearOutput('cfn-output');
+      const paramsRaw = document.getElementById('cfn-params').value;
+      const parameters = {};
+      paramsRaw.split('\n').forEach(line => { const [k,...v] = line.split('='); if(k?.trim()) parameters[k.trim()] = v.join('=').trim(); });
+      const capRaw = document.getElementById('cfn-capabilities').value;
+      const body = {
+        stackName: document.getElementById('cfn-stack-name').value,
+        templateBody: document.getElementById('cfn-template-body').value || undefined,
+        templateUrl: document.getElementById('cfn-template-url').value || undefined,
+        parameters,
+        capabilities: capRaw.split(','),
+        dryRun: document.getElementById('cfn-dryrun').checked
+      };
+      if (!body.stackName) return toast('Stack name required', 'error');
+      log(`[CFN] Deploying stack ${body.stackName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/cfn/deploy', body);
+        showOutput('cfn-output', `✓ ${data.message}`);
+        toast(data.message, 'success');
+      } catch(err) { showOutput('cfn-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async deleteStack() {
+      const name = document.getElementById('cfn-stack-name').value;
+      if (!name) return toast('Stack name required', 'error');
+      if (!confirm(`Delete stack "${name}"?`)) return;
+      try {
+        const data = await api('POST', '/api/cfn/delete', { stackName: name });
+        showOutput('cfn-output', `✓ ${data.message}`);
+        toast(data.message, 'success');
+      } catch(err) { showOutput('cfn-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== CODEBUILD =====
+  const codebuild = {
+    async listProjects() {
+      try {
+        const data = await api('GET', '/api/codebuild/projects');
+        const tbody = document.getElementById('cb-projects-tbody');
+        tbody.innerHTML = (data.projects||[]).map(p => `<tr>
+          <td style="color:var(--blue)">${escHtml(p)}</td>
+          <td><button class="btn btn-secondary" onclick="document.getElementById('cb-project-name').value='${escHtml(p)}';" style="padding:2px 8px;font-size:10px">SELECT</button>
+          <button class="btn btn-secondary" onclick="Portal.codebuild.getBuilds('${escHtml(p)}')" style="padding:2px 8px;font-size:10px;margin-left:4px">BUILDS</button></td>
+        </tr>`).join('') || '<tr><td colspan="2" style="color:var(--text3);text-align:center">No projects</td></tr>';
+        toast(`${(data.projects||[]).length} projects`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async startBuild() {
+      clearOutput('cb-build-output');
+      const envVarsRaw = document.getElementById('cb-env-vars').value;
+      const envVars = {};
+      envVarsRaw.split('\n').forEach(line => { const [k,...v] = line.split('='); if(k?.trim()) envVars[k.trim()] = v.join('=').trim(); });
+      const body = { projectName: document.getElementById('cb-project-name').value, sourceVersion: document.getElementById('cb-source-version').value || undefined, envVars };
+      if (!body.projectName) return toast('Project name required', 'error');
+      log(`[CODEBUILD] Starting build for ${body.projectName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/codebuild/build', body);
+        showOutput('cb-build-output', `✓ Build started!\nBuild ID: ${data.buildId}\nStatus: ${data.status}`);
+        toast(`Build started: ${data.buildId}`, 'success');
+      } catch(err) { showOutput('cb-build-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async getBuilds(projectName) {
+      log(`[CODEBUILD] Fetching builds for ${projectName}...`, 'cmd');
+      try {
+        const data = await api('GET', `/api/codebuild/projects/${encodeURIComponent(projectName)}/builds`);
+        const tbody = document.getElementById('cb-projects-tbody');
+        const txt = (data.builds||[]).map(b => `${b.id?.split(':').pop()} | ${b.status} | ${b.startTime ? new Date(b.startTime).toLocaleString() : '—'}`).join('\n');
+        showOutput('cb-build-output', txt || 'No builds found');
+      } catch(err) { toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== CODEPIPELINE =====
+  const pipeline = {
+    async list() {
+      log('[PIPELINE] Listing pipelines...', 'cmd');
+      try {
+        const data = await api('GET', '/api/pipeline/list');
+        const tbody = document.getElementById('pipeline-tbody');
+        tbody.innerHTML = (data.pipelines||[]).map(p => `<tr>
+          <td style="color:var(--blue);cursor:pointer" onclick="document.getElementById('pipeline-name').value='${escHtml(p.name)}'">${escHtml(p.name)}</td>
+          <td colspan="2" style="color:var(--text3)">—</td>
+          <td style="color:var(--text3)">${p.updated?new Date(p.updated).toLocaleDateString():'—'}</td>
+          <td>
+            <button class="btn btn-primary" onclick="Portal.pipeline.startByName('${escHtml(p.name)}')" style="padding:2px 8px;font-size:10px">START</button>
+            <button class="btn btn-secondary" onclick="Portal.pipeline.getStateByName('${escHtml(p.name)}')" style="padding:2px 8px;font-size:10px;margin-left:4px">STATUS</button>
+          </td>
+        </tr>`).join('') || '<tr><td colspan="5" style="color:var(--text3);text-align:center">No pipelines</td></tr>';
+        toast(`${(data.pipelines||[]).length} pipelines`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async start() {
+      const name = document.getElementById('pipeline-name').value;
+      if (!name) return toast('Pipeline name required', 'error');
+      await this.startByName(name);
+    },
+    async startByName(name) {
+      log(`[PIPELINE] Starting ${name}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/pipeline/start', { name });
+        showOutput('pipeline-output', `✓ Pipeline started!\nExecution ID: ${data.pipelineExecutionId}`);
+        toast(`Pipeline ${name} started!`, 'success');
+      } catch(err) { showOutput('pipeline-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async getState() {
+      const name = document.getElementById('pipeline-name').value;
+      if (!name) return toast('Pipeline name required', 'error');
+      await this.getStateByName(name);
+    },
+    async getStateByName(name) {
+      log(`[PIPELINE] Getting state of ${name}...`, 'cmd');
+      try {
+        const data = await api('GET', `/api/pipeline/${encodeURIComponent(name)}/state`);
+        const txt = (data.stages||[]).map(s => `${s.name}: ${s.status||'—'} (${s.lastRun ? new Date(s.lastRun).toLocaleString() : 'no runs'})`).join('\n');
+        showOutput('pipeline-output', txt || 'No stage data');
+        const tbody = document.getElementById('pipeline-tbody');
+        if (!tbody.innerHTML.includes(name)) return;
+      } catch(err) { showOutput('pipeline-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== ELASTICACHE =====
+  const cache = {
+    async list() {
+      log('[CACHE] Listing clusters...', 'cmd');
+      try {
+        const data = await api('GET', '/api/cache/clusters');
+        const tbody = document.getElementById('cache-clusters-tbody');
+        const all = [...(data.clusters||[]).map(c => ({ ...c, type: 'cluster' })), ...(data.replicationGroups||[]).map(r => ({ id: r.id, engine: 'redis', status: r.status, nodeType: r.nodeType, type: 'rg' }))];
+        tbody.innerHTML = all.length ? all.map(c => `<tr>
+          <td style="color:var(--blue)">${escHtml(c.id)}</td>
+          <td><span class="badge badge-blue">${escHtml(c.engine||'')}</span></td>
+          <td><span class="badge badge-${c.status==='available'?'green':'yellow'}">${escHtml(c.status||'')}</span></td>
+          <td>${escHtml(c.nodeType||'')}</td>
+          <td><button class="btn btn-danger" onclick="Portal.cache.deleteCluster('${escHtml(c.id)}')" style="padding:2px 8px;font-size:10px">DELETE</button></td>
+        </tr>`).join('') : '<tr><td colspan="5" style="color:var(--text3);text-align:center">No clusters</td></tr>';
+        toast(`${all.length} clusters`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async create() {
+      clearOutput('cache-output');
+      const body = { clusterId: document.getElementById('cache-cluster-id').value, engine: document.getElementById('cache-engine').value, nodeType: document.getElementById('cache-node-type').value, numNodes: parseInt(document.getElementById('cache-num-nodes').value) };
+      if (!body.clusterId) return toast('Cluster ID required', 'error');
+      log(`[CACHE] Creating ${body.engine} cluster ${body.clusterId}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/cache/create', body);
+        showOutput('cache-output', `✓ ${data.message}`);
+        toast(data.message, 'success');
+      } catch(err) { showOutput('cache-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async deleteCluster(clusterId) {
+      if (!confirm(`Delete ElastiCache cluster "${clusterId}"?`)) return;
+      try {
+        const data = await api('POST', '/api/cache/delete', { clusterId });
+        toast(data.message, 'success');
+        this.list();
+      } catch(err) { toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== DYNAMODB =====
+  const dynamo = {
+    async listTables() {
+      log('[DYNAMO] Listing tables...', 'cmd');
+      try {
+        const data = await api('GET', '/api/dynamo/tables');
+        const tbody = document.getElementById('dynamo-tables-tbody');
+        tbody.innerHTML = (data.tables||[]).map(t => `<tr>
+          <td style="color:var(--blue)">${escHtml(t)}</td>
+          <td>
+            <button class="btn btn-secondary" onclick="Portal.dynamo.scan('${escHtml(t)}')" style="padding:2px 8px;font-size:10px">SCAN</button>
+            <button class="btn btn-danger" onclick="Portal.dynamo.deleteTable('${escHtml(t)}')" style="padding:2px 8px;font-size:10px;margin-left:4px">DELETE</button>
+          </td>
+        </tr>`).join('') || '<tr><td colspan="2" style="color:var(--text3);text-align:center">No tables</td></tr>';
+        toast(`${(data.tables||[]).length} tables`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async createTable() {
+      clearOutput('dynamo-create-output');
+      const body = { tableName: document.getElementById('dynamo-table-name').value, partitionKey: document.getElementById('dynamo-pk').value, partitionKeyType: document.getElementById('dynamo-pk-type').value, sortKey: document.getElementById('dynamo-sk').value || undefined, billingMode: document.getElementById('dynamo-billing').value };
+      if (!body.tableName || !body.partitionKey) return toast('Table name and partition key required', 'error');
+      log(`[DYNAMO] Creating table ${body.tableName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/dynamo/tables', body);
+        showOutput('dynamo-create-output', `✓ Table ${data.tableName} created\nStatus: ${data.status}`);
+        toast('Table created!', 'success');
+        this.listTables();
+      } catch(err) { showOutput('dynamo-create-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async scan(tableName) {
+      log(`[DYNAMO] Scanning ${tableName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/dynamo/scan', { tableName, limit: 25 });
+        showOutput('dynamo-scan-output', JSON.stringify(data.items, null, 2) || 'No items');
+        toast(`${data.count} items scanned`, 'info');
+      } catch(err) { showOutput('dynamo-scan-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async deleteTable(tableName) {
+      if (!confirm(`Delete table "${tableName}"? This is irreversible!`)) return;
+      try {
+        await api('DELETE', `/api/dynamo/tables/${encodeURIComponent(tableName)}`);
+        toast(`Table ${tableName} deleted`, 'success');
+        this.listTables();
+      } catch(err) { toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== SQS =====
+  const sqs = {
+    async list() {
+      log('[SQS] Listing queues...', 'cmd');
+      try {
+        const data = await api('GET', '/api/sqs/queues');
+        const tbody = document.getElementById('sqs-queues-tbody');
+        tbody.innerHTML = (data.queues||[]).map(q => `<tr>
+          <td style="color:var(--blue);cursor:pointer" onclick="document.getElementById('sqs-queue-url').value='${escHtml(q.url)}'">${escHtml(q.name)}</td>
+          <td><button class="btn btn-secondary" onclick="document.getElementById('sqs-queue-url').value='${escHtml(q.url)}'" style="padding:2px 8px;font-size:10px">SELECT</button></td>
+        </tr>`).join('') || '<tr><td colspan="2" style="color:var(--text3);text-align:center">No queues</td></tr>';
+        toast(`${(data.queues||[]).length} queues`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async create() {
+      clearOutput('sqs-output');
+      const body = { queueName: document.getElementById('sqs-queue-name').value, fifo: document.getElementById('sqs-fifo').checked };
+      if (!body.queueName) return toast('Queue name required', 'error');
+      log(`[SQS] Creating queue ${body.queueName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/sqs/queues', body);
+        showOutput('sqs-output', `✓ Queue created!\nURL: ${data.queueUrl}`);
+        toast('Queue created!', 'success');
+        document.getElementById('sqs-queue-url').value = data.queueUrl;
+        this.list();
+      } catch(err) { showOutput('sqs-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async send() {
+      clearOutput('sqs-output');
+      const body = { queueUrl: document.getElementById('sqs-queue-url').value, message: document.getElementById('sqs-message').value };
+      if (!body.queueUrl || !body.message) return toast('Queue URL and message required', 'error');
+      try {
+        const data = await api('POST', '/api/sqs/send', body);
+        showOutput('sqs-output', `✓ Message sent!\nMessage ID: ${data.messageId}`);
+        toast('Message sent!', 'success');
+      } catch(err) { showOutput('sqs-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async receive() {
+      clearOutput('sqs-output');
+      const queueUrl = document.getElementById('sqs-queue-url').value;
+      if (!queueUrl) return toast('Queue URL required', 'error');
+      try {
+        const data = await api('POST', '/api/sqs/receive', { queueUrl, maxMessages: 10 });
+        const msgs = data.messages || [];
+        showOutput('sqs-output', msgs.length ? msgs.map(m => `ID: ${m.id}\n${m.body}`).join('\n\n---\n\n') : 'No messages available');
+        toast(`${msgs.length} messages received`, 'info');
+      } catch(err) { showOutput('sqs-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== CLOUDFRONT =====
+  const cdn = {
+    async list() {
+      log('[CDN] Listing distributions...', 'cmd');
+      try {
+        const data = await api('GET', '/api/cdn/distributions');
+        const tbody = document.getElementById('cdn-distros-tbody');
+        tbody.innerHTML = (data.distributions||[]).map(d => `<tr>
+          <td style="color:var(--blue);cursor:pointer" onclick="document.getElementById('cdn-dist-id').value='${escHtml(d.id)}'">${escHtml(d.id)}</td>
+          <td style="color:var(--text2)">${escHtml(d.domainName||'')}</td>
+          <td><span class="badge badge-${d.status==='Deployed'?'green':'yellow'}">${escHtml(d.status||'')}</span></td>
+          <td><span class="badge badge-${d.enabled?'green':'red'}">${d.enabled?'Yes':'No'}</span></td>
+          <td style="color:var(--text3);font-size:11px">${(d.origins||[]).join(', ')}</td>
+          <td><button class="btn btn-secondary" onclick="Portal.cdn.invalidate('${escHtml(d.id)}')" style="padding:2px 8px;font-size:10px">INVALIDATE</button></td>
+        </tr>`).join('') || '<tr><td colspan="6" style="color:var(--text3);text-align:center">No distributions</td></tr>';
+        toast(`${(data.distributions||[]).length} distributions`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async invalidate(distId) {
+      clearOutput('cdn-output');
+      const distributionId = distId || document.getElementById('cdn-dist-id').value;
+      const pathsRaw = document.getElementById('cdn-paths').value;
+      const paths = pathsRaw.split(',').map(p => p.trim()).filter(Boolean);
+      if (!distributionId) return toast('Distribution ID required', 'error');
+      log(`[CDN] Creating invalidation for ${distributionId}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/cdn/invalidate', { distributionId, paths });
+        showOutput('cdn-output', `✓ Invalidation created!\nID: ${data.invalidationId}\nStatus: ${data.status}`);
+        toast('Cache invalidation created!', 'success');
+      } catch(err) { showOutput('cdn-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== ELASTIC BEANSTALK =====
+  const beanstalk = {
+    async list() {
+      log('[BEANSTALK] Loading apps and environments...', 'cmd');
+      try {
+        const data = await api('GET', '/api/beanstalk/apps');
+        const tbody = document.getElementById('beanstalk-envs-tbody');
+        tbody.innerHTML = (data.environments||[]).map(e => `<tr>
+          <td style="color:var(--blue);cursor:pointer" onclick="document.getElementById('beanstalk-env-name').value='${escHtml(e.name)}'">${escHtml(e.name)}</td>
+          <td>${escHtml(e.app||'')}</td>
+          <td><span class="badge badge-${e.status==='Ready'?'green':'yellow'}">${escHtml(e.status||'')}</span></td>
+          <td><span class="badge badge-${e.health==='Green'?'green':e.health==='Yellow'?'yellow':'red'}">${escHtml(e.health||'')}</span></td>
+          <td style="color:var(--text2);font-size:11px">${e.url?`<a href="http://${e.url}" target="_blank" style="color:var(--blue)">${e.url}</a>`:'—'}</td>
+          <td><button class="btn btn-secondary" onclick="Portal.beanstalk.restartEnv('${escHtml(e.name)}')" style="padding:2px 8px;font-size:10px">RESTART</button></td>
+        </tr>`).join('') || '<tr><td colspan="6" style="color:var(--text3);text-align:center">No environments</td></tr>';
+        toast(`${(data.environments||[]).length} environments`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async restartEnv(envName) {
+      const name = envName || document.getElementById('beanstalk-env-name').value;
+      if (!name) return toast('Environment name required', 'error');
+      log(`[BEANSTALK] Restarting ${name}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/beanstalk/restart', { environmentName: name });
+        showOutput('beanstalk-output', `✓ ${data.message}`);
+        toast(data.message, 'success');
+      } catch(err) { showOutput('beanstalk-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async restart() { await this.restartEnv(); },
+    async events() {
+      const name = document.getElementById('beanstalk-env-name').value;
+      if (!name) return toast('Environment name required', 'error');
+      log(`[BEANSTALK] Getting events for ${name}...`, 'cmd');
+      try {
+        const data = await api('GET', `/api/beanstalk/events?environmentName=${encodeURIComponent(name)}`);
+        showOutput('beanstalk-output', (data.events||[]).map(e => `[${e.severity}] ${new Date(e.time).toLocaleString()} - ${e.message}`).join('\n') || 'No events');
+      } catch(err) { showOutput('beanstalk-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== SSM =====
+  const ssm = {
+    async list() {
+      log('[SSM] Listing parameters...', 'cmd');
+      try {
+        const data = await api('GET', '/api/ssm/parameters?path=/&recursive=true');
+        showOutput('ssm-param-output', (data.parameters||[]).map(p => `${p.name} [${p.type}] v${p.version}`).join('\n') || 'No parameters');
+        toast(`${(data.parameters||[]).length} parameters`, 'info');
+      } catch(err) { showOutput('ssm-param-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async get() {
+      const name = document.getElementById('ssm-param-name').value;
+      if (!name) return toast('Parameter name required', 'error');
+      try {
+        const data = await api('GET', `/api/ssm/parameters/${encodeURIComponent(name)}`);
+        showOutput('ssm-param-output', `Name: ${data.parameter.name}\nType: ${data.parameter.type}\nValue: ${data.parameter.value}\nVersion: ${data.parameter.version}`);
+      } catch(err) { showOutput('ssm-param-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async put() {
+      const body = { name: document.getElementById('ssm-param-name').value, value: document.getElementById('ssm-param-value').value, type: document.getElementById('ssm-param-type').value };
+      if (!body.name || !body.value) return toast('Name and value required', 'error');
+      log(`[SSM] Putting parameter ${body.name}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/ssm/parameters', body);
+        showOutput('ssm-param-output', `✓ Parameter stored!\nVersion: ${data.version}`);
+        toast('Parameter stored!', 'success');
+      } catch(err) { showOutput('ssm-param-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async runCommand() {
+      clearOutput('ssm-cmd-output');
+      const instanceIds = document.getElementById('ssm-instance-ids').value.split(',').map(s => s.trim()).filter(Boolean);
+      const commands = document.getElementById('ssm-commands').value.split('\n').filter(Boolean);
+      if (!instanceIds.length || !commands.length) return toast('Instance IDs and commands required', 'error');
+      log(`[SSM] Running command on ${instanceIds.join(', ')}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/ssm/run-command', { instanceIds, commands });
+        showOutput('ssm-cmd-output', `✓ Command sent!\nCommand ID: ${data.commandId}\nStatus: ${data.status}`);
+        toast('SSM Command sent!', 'success');
+      } catch(err) { showOutput('ssm-cmd-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== CLOUDWATCH ALARMS =====
+  const alarms = {
+    async list() {
+      log('[ALARMS] Listing alarms...', 'cmd');
+      try {
+        const data = await api('GET', '/api/alarms/list');
+        const tbody = document.getElementById('alarms-tbody');
+        tbody.innerHTML = (data.alarms||[]).map(a => `<tr>
+          <td style="color:var(--text)">${escHtml(a.name)}</td>
+          <td><span class="badge badge-${a.state==='OK'?'green':a.state==='ALARM'?'red':'yellow'}">${escHtml(a.state||'')}</span></td>
+          <td style="color:var(--text2)">${escHtml(a.metric||'')}</td>
+          <td style="color:var(--yellow)">${a.threshold}</td>
+          <td style="color:var(--text3)">${a.updatedAt?new Date(a.updatedAt).toLocaleString():'—'}</td>
+        </tr>`).join('') || '<tr><td colspan="5" style="color:var(--text3);text-align:center">No alarms</td></tr>';
+        toast(`${(data.alarms||[]).length} alarms`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async create() {
+      clearOutput('alarm-create-output');
+      const metricValue = document.getElementById('alarm-metric').value;
+      const body = {
+        alarmName: document.getElementById('alarm-name').value,
+        metricName: metricValue,
+        namespace: document.getElementById('alarm-namespace').value,
+        threshold: parseFloat(document.getElementById('alarm-threshold').value),
+        comparisonOperator: document.getElementById('alarm-comparison').value
+      };
+      if (!body.alarmName || !body.metricName) return toast('Alarm name and metric required', 'error');
+      log(`[ALARMS] Creating alarm ${body.alarmName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/alarms/create', body);
+        showOutput('alarm-create-output', `✓ ${data.message}`);
+        toast('Alarm created!', 'success');
+        this.list();
+      } catch(err) { showOutput('alarm-create-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== ECS =====
+  const ecs = {
+    async listClusters() {
+      log('[ECS] Listing clusters...', 'cmd');
+      try {
+        const data = await api('GET', '/api/ecs/clusters');
+        const tbody = document.getElementById('ecs-clusters-tbody');
+        tbody.innerHTML = (data.clusters||[]).map(c => `<tr>
+          <td style="color:var(--blue);cursor:pointer" onclick="document.getElementById('ecs-cluster-name').value='${escHtml(c.name)}'">${escHtml(c.name)}</td>
+          <td>
+            <button class="btn btn-secondary" onclick="Portal.ecs.listServices('${escHtml(c.name)}')" style="padding:2px 8px;font-size:10px">SERVICES</button>
+            <button class="btn btn-secondary" onclick="Portal.ecs.listTasks('${escHtml(c.name)}')" style="padding:2px 8px;font-size:10px;margin-left:4px">TASKS</button>
+          </td>
+        </tr>`).join('') || '<tr><td colspan="2" style="color:var(--text3);text-align:center">No clusters</td></tr>';
+        toast(`${(data.clusters||[]).length} clusters`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async listServices(cluster) {
+      try {
+        const data = await api('GET', `/api/ecs/clusters/${encodeURIComponent(cluster)}/services`);
+        const txt = (data.services||[]).map(s => `${s.name} | desired:${s.desired} running:${s.running} | ${s.status}`).join('\n');
+        showOutput('ecs-output', txt || 'No services');
+        toast(`${(data.services||[]).length} services`, 'info');
+      } catch(err) { showOutput('ecs-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async listTasks(cluster) {
+      try {
+        const data = await api('GET', `/api/ecs/clusters/${encodeURIComponent(cluster)}/tasks`);
+        const txt = (data.tasks||[]).map(t => `${t.arn?.split('/').pop()} | ${t.status} | ${t.launchType}`).join('\n');
+        showOutput('ecs-output', txt || 'No tasks');
+        toast(`${(data.tasks||[]).length} tasks`, 'info');
+      } catch(err) { showOutput('ecs-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async registerTaskDef() {
+      const body = { family: document.getElementById('ecs-family').value, image: document.getElementById('ecs-image').value, cpu: document.getElementById('ecs-cpu').value, memory: document.getElementById('ecs-memory').value, containerPort: parseInt(document.getElementById('ecs-port').value) };
+      if (!body.family || !body.image) return toast('Family and image required', 'error');
+      log(`[ECS] Registering task definition ${body.family}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/ecs/task-def', body);
+        showOutput('ecs-output', `✓ Task definition registered!\nARN: ${data.taskDefinition}\nRevision: ${data.revision}`);
+        document.getElementById('ecs-task-def').value = `${body.family}:${data.revision}`;
+        toast('Task definition registered!', 'success');
+      } catch(err) { showOutput('ecs-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async runTask() {
+      const body = { cluster: document.getElementById('ecs-cluster-name').value, taskDefinition: document.getElementById('ecs-task-def').value, subnets: document.getElementById('ecs-subnets').value.split(',').map(s=>s.trim()).filter(Boolean) };
+      if (!body.cluster || !body.taskDefinition) return toast('Cluster and task definition required', 'error');
+      log(`[ECS] Running task ${body.taskDefinition}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/ecs/run-task', body);
+        showOutput('ecs-output', `✓ Task running!\n${(data.tasks||[]).map(t=>`ARN: ${t.arn}\nStatus: ${t.status}`).join('\n')}`);
+        toast('Task started!', 'success');
+      } catch(err) { showOutput('ecs-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async scale() {
+      const body = { cluster: document.getElementById('ecs-cluster-name').value, service: document.getElementById('ecs-service-name').value, desiredCount: parseInt(document.getElementById('ecs-desired-count').value) };
+      if (!body.cluster || !body.service) return toast('Cluster and service required', 'error');
+      try {
+        const data = await api('POST', '/api/ecs/scale', body);
+        showOutput('ecs-output', `✓ ${data.message}`);
+        toast(data.message, 'success');
+      } catch(err) { showOutput('ecs-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== STEP FUNCTIONS =====
+  const stepfn = {
+    async list() {
+      log('[STEPFN] Listing state machines...', 'cmd');
+      try {
+        const data = await api('GET', '/api/stepfn/machines');
+        const tbody = document.getElementById('stepfn-machines-tbody');
+        tbody.innerHTML = (data.stateMachines||[]).map(m => `<tr>
+          <td style="color:var(--blue);cursor:pointer" onclick="document.getElementById('stepfn-arn').value='${escHtml(m.arn)}'">${escHtml(m.name)}</td>
+          <td><span class="badge badge-blue">${escHtml(m.type||'')}</span></td>
+          <td style="color:var(--text3)">${m.created?new Date(m.created).toLocaleDateString():'—'}</td>
+          <td>
+            <button class="btn btn-primary" onclick="document.getElementById('stepfn-arn').value='${escHtml(m.arn)}'" style="padding:2px 8px;font-size:10px">SELECT</button>
+            <button class="btn btn-secondary" onclick="Portal.stepfn.listExecsByArn('${escHtml(m.arn)}')" style="padding:2px 8px;font-size:10px;margin-left:4px">RUNS</button>
+          </td>
+        </tr>`).join('') || '<tr><td colspan="4" style="color:var(--text3);text-align:center">No state machines</td></tr>';
+        toast(`${(data.stateMachines||[]).length} state machines`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async execute() {
+      clearOutput('stepfn-output');
+      const arn = document.getElementById('stepfn-arn').value;
+      let input = {};
+      try { input = JSON.parse(document.getElementById('stepfn-input').value || '{}'); } catch(e) { return toast('Invalid JSON input', 'error'); }
+      if (!arn) return toast('State machine ARN required', 'error');
+      log('[STEPFN] Starting execution...', 'cmd');
+      try {
+        const data = await api('POST', '/api/stepfn/execute', { stateMachineArn: arn, input });
+        showOutput('stepfn-output', `✓ Execution started!\nARN: ${data.executionArn}\nStarted: ${data.startDate}`);
+        toast('Execution started!', 'success');
+      } catch(err) { showOutput('stepfn-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async listExecutions() {
+      const arn = document.getElementById('stepfn-arn').value;
+      if (!arn) return toast('State machine ARN required', 'error');
+      await this.listExecsByArn(arn);
+    },
+    async listExecsByArn(arn) {
+      try {
+        const data = await api('GET', `/api/stepfn/executions?stateMachineArn=${encodeURIComponent(arn)}`);
+        const txt = (data.executions||[]).map(e => `${e.name} | ${e.status} | ${e.startDate?new Date(e.startDate).toLocaleString():'—'}`).join('\n');
+        showOutput('stepfn-output', txt || 'No executions');
+        toast(`${(data.executions||[]).length} executions`, 'info');
+      } catch(err) { showOutput('stepfn-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== EVENTBRIDGE =====
+  const events = {
+    async listRules() {
+      log('[EVENTS] Listing rules...', 'cmd');
+      try {
+        const data = await api('GET', '/api/events/rules');
+        const tbody = document.getElementById('eb-rules-tbody');
+        tbody.innerHTML = (data.rules||[]).map(r => `<tr>
+          <td style="color:var(--blue)">${escHtml(r.name)}</td>
+          <td><span class="badge badge-${r.state==='ENABLED'?'green':'red'}">${escHtml(r.state||'')}</span></td>
+          <td style="color:var(--text3)">${escHtml(r.schedule||r.eventPattern||'—')}</td>
+        </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text3);text-align:center">No rules</td></tr>';
+        toast(`${(data.rules||[]).length} rules`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async createRule() {
+      clearOutput('eb-output');
+      const body = { ruleName: document.getElementById('eb-rule-name').value, schedule: document.getElementById('eb-schedule').value || undefined, eventPattern: document.getElementById('eb-pattern').value || undefined, targetArn: document.getElementById('eb-target-arn').value };
+      if (!body.ruleName || !body.targetArn) return toast('Rule name and target ARN required', 'error');
+      log(`[EVENTS] Creating rule ${body.ruleName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/events/rules', body);
+        showOutput('eb-output', `✓ Rule created!\nARN: ${data.ruleArn}`);
+        toast('EventBridge rule created!', 'success');
+      } catch(err) { showOutput('eb-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async putEvent() {
+      const body = { source: document.getElementById('eb-event-source').value, detailType: document.getElementById('eb-detail-type').value, detail: document.getElementById('eb-detail').value };
+      if (!body.source || !body.detailType || !body.detail) return toast('Source, detail type, and detail required', 'error');
+      try {
+        const data = await api('POST', '/api/events/put', body);
+        showOutput('eb-output', `✓ Event published!\nFailed entries: ${data.failedCount}`);
+        toast('Event published!', 'success');
+      } catch(err) { showOutput('eb-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== KINESIS =====
+  const kinesis = {
+    async list() {
+      log('[KINESIS] Listing streams...', 'cmd');
+      try {
+        const data = await api('GET', '/api/kinesis/streams');
+        const tbody = document.getElementById('kinesis-streams-tbody');
+        tbody.innerHTML = (data.streams||[]).map(s => `<tr>
+          <td style="color:var(--blue);cursor:pointer" onclick="document.getElementById('kinesis-put-stream').value='${escHtml(s)}'">${escHtml(s)}</td>
+          <td><button class="btn btn-secondary" onclick="Portal.kinesis.describe('${escHtml(s)}')" style="padding:2px 8px;font-size:10px">DESCRIBE</button></td>
+        </tr>`).join('') || '<tr><td colspan="2" style="color:var(--text3);text-align:center">No streams</td></tr>';
+        toast(`${(data.streams||[]).length} streams`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async create() {
+      clearOutput('kinesis-output');
+      const body = { streamName: document.getElementById('kinesis-stream-name').value, shardCount: parseInt(document.getElementById('kinesis-shards').value) };
+      if (!body.streamName) return toast('Stream name required', 'error');
+      log(`[KINESIS] Creating stream ${body.streamName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/kinesis/streams', body);
+        showOutput('kinesis-output', `✓ ${data.message}`);
+        toast(data.message, 'success');
+        this.list();
+      } catch(err) { showOutput('kinesis-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async put() {
+      clearOutput('kinesis-output');
+      const body = { streamName: document.getElementById('kinesis-put-stream').value, data: document.getElementById('kinesis-data').value, partitionKey: document.getElementById('kinesis-partition-key').value };
+      if (!body.streamName || !body.data) return toast('Stream name and data required', 'error');
+      log(`[KINESIS] Putting record to ${body.streamName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/kinesis/put', body);
+        showOutput('kinesis-output', `✓ Record sent!\nShard: ${data.shardId}\nSequence: ${data.sequenceNumber}`);
+        toast('Record published!', 'success');
+      } catch(err) { showOutput('kinesis-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async describe(streamName) {
+      try {
+        const data = await api('GET', `/api/kinesis/streams/${encodeURIComponent(streamName)}`);
+        showOutput('kinesis-output', `Stream: ${data.name}\nStatus: ${data.status}\nShards: ${data.shards}\nRetention: ${data.retentionHours}h\nARN: ${data.arn}`);
+      } catch(err) { showOutput('kinesis-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== WAF =====
+  const waf = {
+    async listAcls() {
+      log('[WAF] Listing Web ACLs...', 'cmd');
+      try {
+        const scope = document.getElementById('waf-scope')?.value || 'REGIONAL';
+        const data = await api('GET', `/api/waf/acls?scope=${scope}`);
+        const tbody = document.getElementById('waf-acls-tbody');
+        tbody.innerHTML = (data.webAcls||[]).map(a => `<tr>
+          <td style="color:var(--blue)">${escHtml(a.name)}</td>
+          <td style="color:var(--text3);font-size:11px">${escHtml(a.id)}</td>
+          <td><button class="btn btn-secondary" onclick="document.getElementById('waf-acl-arn').value='${escHtml(a.arn)}'" style="padding:2px 8px;font-size:10px">SELECT</button></td>
+        </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text3);text-align:center">No ACLs</td></tr>';
+        toast(`${(data.webAcls||[]).length} Web ACLs`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async createIpSet() {
+      clearOutput('waf-output');
+      const ips = document.getElementById('waf-ips').value.split('\n').map(s=>s.trim()).filter(Boolean);
+      const body = { name: document.getElementById('waf-ipset-name').value, addresses: ips, scope: document.getElementById('waf-scope').value };
+      if (!body.name || !ips.length) return toast('Name and IP addresses required', 'error');
+      log(`[WAF] Creating IP set ${body.name}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/waf/ip-sets', body);
+        showOutput('waf-output', `✓ IP Set created!\nID: ${data.id}\nARN: ${data.arn}`);
+        toast('IP Set created!', 'success');
+      } catch(err) { showOutput('waf-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async associate() {
+      clearOutput('waf-output');
+      const body = { webAclArn: document.getElementById('waf-acl-arn').value, resourceArn: document.getElementById('waf-resource-arn').value };
+      if (!body.webAclArn || !body.resourceArn) return toast('WAF ACL ARN and resource ARN required', 'error');
+      try {
+        const data = await api('POST', '/api/waf/associate', body);
+        showOutput('waf-output', `✓ ${data.message}`);
+        toast(data.message, 'success');
+      } catch(err) { showOutput('waf-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== BACKUP =====
+  const backup = {
+    async create() {
+      clearOutput('backup-output');
+      const body = { planName: document.getElementById('backup-plan-name').value, scheduleExpression: document.getElementById('backup-schedule').value, deleteAfterDays: parseInt(document.getElementById('backup-retention').value) };
+      if (!body.planName) return toast('Plan name required', 'error');
+      log(`[BACKUP] Creating plan ${body.planName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/backup/plans', body);
+        showOutput('backup-output', `✓ Backup plan created!\nPlan ID: ${data.planId}`);
+        toast('Backup plan created!', 'success');
+        this.listPlans();
+      } catch(err) { showOutput('backup-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async startNow() {
+      clearOutput('backup-output');
+      const body = { resourceArn: document.getElementById('backup-resource-arn').value };
+      if (!body.resourceArn) return toast('Resource ARN required', 'error');
+      log('[BACKUP] Starting on-demand backup...', 'cmd');
+      try {
+        const data = await api('POST', '/api/backup/start', body);
+        showOutput('backup-output', `✓ Backup started!\nJob ID: ${data.jobId}`);
+        toast('Backup started!', 'success');
+      } catch(err) { showOutput('backup-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async listPlans() {
+      log('[BACKUP] Listing plans...', 'cmd');
+      try {
+        const data = await api('GET', '/api/backup/plans');
+        const tbody = document.getElementById('backup-list-tbody');
+        tbody.innerHTML = (data.plans||[]).map(p => `<tr>
+          <td style="color:var(--blue)">${escHtml(p.name)}</td>
+          <td><span class="badge badge-green">PLAN</span></td>
+          <td style="color:var(--text3)">${p.created?new Date(p.created).toLocaleDateString():'—'}</td>
+        </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text3);text-align:center">No plans</td></tr>';
+        toast(`${(data.plans||[]).length} plans`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async listJobs() {
+      log('[BACKUP] Listing jobs...', 'cmd');
+      try {
+        const data = await api('GET', '/api/backup/jobs');
+        const tbody = document.getElementById('backup-list-tbody');
+        tbody.innerHTML = (data.jobs||[]).map(j => `<tr>
+          <td style="color:var(--text2);font-size:11px">${escHtml((j.id||'').substring(0,20)+'...')}</td>
+          <td><span class="badge badge-${j.status==='COMPLETED'?'green':j.status==='FAILED'?'red':'yellow'}">${escHtml(j.status||'')}</span></td>
+          <td style="color:var(--text3)">${j.created?new Date(j.created).toLocaleDateString():'—'}</td>
+        </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text3);text-align:center">No jobs</td></tr>';
+        toast(`${(data.jobs||[]).length} backup jobs`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== AWS CONFIG =====
+  const awsconfig = {
+    async compliance() {
+      log('[CONFIG] Loading compliance data...', 'cmd');
+      try {
+        const data = await api('GET', '/api/awsconfig/compliance');
+        document.getElementById('awsconfig-summary').style.display = 'block';
+        document.getElementById('awsconfig-compliant').textContent = data.summary?.compliant ?? '—';
+        document.getElementById('awsconfig-noncompliant').textContent = data.summary?.nonCompliant ?? '—';
+        document.getElementById('awsconfig-total').textContent = data.summary?.total ?? '—';
+        const tbody = document.getElementById('awsconfig-tbody');
+        tbody.innerHTML = (data.rules||[]).map(r => `<tr>
+          <td style="color:var(--text)">${escHtml(r.name)}</td>
+          <td><span class="badge badge-${r.compliance==='COMPLIANT'?'green':r.compliance==='NON_COMPLIANT'?'red':'yellow'}">${escHtml(r.compliance||'—')}</span></td>
+          <td style="color:var(--text3)">—</td>
+        </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text3);text-align:center">No rules</td></tr>';
+        toast(`${data.summary?.total||0} rules checked`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async listRules() {
+      log('[CONFIG] Listing config rules...', 'cmd');
+      try {
+        const data = await api('GET', '/api/awsconfig/rules');
+        const tbody = document.getElementById('awsconfig-tbody');
+        tbody.innerHTML = (data.rules||[]).map(r => `<tr>
+          <td style="color:var(--text)">${escHtml(r.name)}</td>
+          <td><span class="badge badge-${r.state==='ACTIVE'?'green':'yellow'}">${escHtml(r.state||'—')}</span></td>
+          <td style="color:var(--text3)">${escHtml(r.source||'—')}</td>
+        </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text3);text-align:center">No rules</td></tr>';
+        toast(`${(data.rules||[]).length} rules`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== API GATEWAY =====
+  const apigw = {
+    async listApis() {
+      log('[APIGW] Listing REST APIs...', 'cmd');
+      try {
+        const data = await api('GET', '/api/apigw/apis');
+        const tbody = document.getElementById('apigw-apis-tbody');
+        tbody.innerHTML = (data.apis||[]).map(a => `<tr>
+          <td style="color:var(--blue);cursor:pointer" onclick="document.getElementById('apigw-api-id').value='${escHtml(a.id)}'">${escHtml(a.name)}</td>
+          <td style="color:var(--text3)">${escHtml(a.id)}</td>
+          <td><span class="badge badge-blue">${escHtml(a.endpointType||'')}</span></td>
+          <td style="color:var(--text3)">${a.created?new Date(a.created).toLocaleDateString():'—'}</td>
+          <td><button class="btn btn-secondary" onclick="Portal.apigw.listStages('${escHtml(a.id)}')" style="padding:2px 8px;font-size:10px">STAGES</button></td>
+        </tr>`).join('') || '<tr><td colspan="5" style="color:var(--text3);text-align:center">No APIs</td></tr>';
+        toast(`${(data.apis||[]).length} APIs`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async listStages(apiId) {
+      try {
+        const data = await api('GET', `/api/apigw/apis/${encodeURIComponent(apiId)}/stages`);
+        showOutput('apigw-output', (data.stages||[]).map(s => `${s.name} → ${s.invokeUrl}`).join('\n') || 'No stages');
+      } catch(err) { showOutput('apigw-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async deploy() {
+      clearOutput('apigw-output');
+      const body = { restApiId: document.getElementById('apigw-api-id').value, stageName: document.getElementById('apigw-stage-name').value, description: document.getElementById('apigw-deploy-desc').value };
+      if (!body.restApiId || !body.stageName) return toast('API ID and stage name required', 'error');
+      log(`[APIGW] Deploying API ${body.restApiId} to ${body.stageName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/apigw/deploy', body);
+        showOutput('apigw-output', `✓ API deployed!\nDeployment ID: ${data.deploymentId}\nURL: ${data.invokeUrl}`);
+        toast('API deployed!', 'success');
+      } catch(err) { showOutput('apigw-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async listKeys() {
+      try {
+        const data = await api('GET', '/api/apigw/keys');
+        const tbody = document.getElementById('apigw-keys-tbody');
+        tbody.innerHTML = (data.keys||[]).map(k => `<tr>
+          <td style="color:var(--text)">${escHtml(k.name)}</td>
+          <td><span class="badge badge-${k.enabled?'green':'red'}">${k.enabled?'Yes':'No'}</span></td>
+          <td style="color:var(--text3)">${k.created?new Date(k.created).toLocaleDateString():'—'}</td>
+        </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text3);text-align:center">No API keys</td></tr>';
+        toast(`${(data.keys||[]).length} keys`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async createKey() {
+      const name = document.getElementById('apigw-key-name').value;
+      if (!name) return toast('Key name required', 'error');
+      try {
+        const data = await api('POST', '/api/apigw/keys', { name });
+        showOutput('apigw-output', `✓ API Key created!\nID: ${data.id}\nValue: ${data.value}`);
+        toast('API Key created!', 'success');
+        this.listKeys();
+      } catch(err) { showOutput('apigw-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== OPENSEARCH =====
+  const opensearch = {
+    async list() {
+      log('[OPENSEARCH] Listing domains...', 'cmd');
+      try {
+        const data = await api('GET', '/api/opensearch/domains');
+        const tbody = document.getElementById('os-domains-tbody');
+        tbody.innerHTML = (data.domains||[]).map(d => `<tr>
+          <td style="color:var(--blue)">${escHtml(d.name)}</td>
+          <td style="color:var(--text3)">${escHtml(d.engineType||'')}</td>
+          <td>
+            <button class="btn btn-secondary" onclick="Portal.opensearch.describe('${escHtml(d.name)}')" style="padding:2px 8px;font-size:10px">DESCRIBE</button>
+            <button class="btn btn-danger" onclick="Portal.opensearch.deleteDomain('${escHtml(d.name)}')" style="padding:2px 8px;font-size:10px;margin-left:4px">DELETE</button>
+          </td>
+        </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text3);text-align:center">No domains</td></tr>';
+        toast(`${(data.domains||[]).length} domains`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async create() {
+      clearOutput('os-output');
+      const body = { domainName: document.getElementById('os-domain-name').value, engineVersion: document.getElementById('os-engine-version').value, instanceType: document.getElementById('os-instance-type').value, ebsVolumeSize: parseInt(document.getElementById('os-ebs-size').value) };
+      if (!body.domainName) return toast('Domain name required', 'error');
+      log(`[OPENSEARCH] Creating domain ${body.domainName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/opensearch/create', body);
+        showOutput('os-output', `✓ ${data.message}`);
+        toast(data.message, 'success');
+      } catch(err) { showOutput('os-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async describe(name) {
+      try {
+        const data = await api('GET', `/api/opensearch/domains/${encodeURIComponent(name)}`);
+        const d = data.domain;
+        showOutput('os-output', `Domain: ${d.name}\nEndpoint: ${d.endpoint||'(provisioning)'}\nEngine: ${d.engineVersion}\nStatus: ${d.processing?'Processing':'Active'}\nInstance: ${d.instanceType} x${d.instanceCount}\nARN: ${d.arn}`);
+      } catch(err) { showOutput('os-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async deleteDomain(name) {
+      if (!confirm(`Delete OpenSearch domain "${name}"?`)) return;
+      try {
+        const data = await api('POST', '/api/opensearch/delete', { domainName: name });
+        showOutput('os-output', `✓ ${data.message}`);
+        toast(data.message, 'success');
+        this.list();
+      } catch(err) { showOutput('os-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  // ===== GLUE =====
+  const glue = {
+    async listDatabases() {
+      log('[GLUE] Listing databases...', 'cmd');
+      try {
+        const data = await api('GET', '/api/glue/databases');
+        const tbody = document.getElementById('glue-databases-tbody');
+        tbody.innerHTML = (data.databases||[]).map(d => `<tr>
+          <td style="color:var(--blue);cursor:pointer" onclick="Portal.glue.listTables('${escHtml(d.name)}')">${escHtml(d.name)}</td>
+          <td style="color:var(--text3)">${escHtml(d.description||'—')}</td>
+          <td><button class="btn btn-secondary" onclick="Portal.glue.listTables('${escHtml(d.name)}')" style="padding:2px 8px;font-size:10px">TABLES</button></td>
+        </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text3);text-align:center">No databases</td></tr>';
+        toast(`${(data.databases||[]).length} databases`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async listTables(dbName) {
+      try {
+        const data = await api('GET', `/api/glue/databases/${encodeURIComponent(dbName)}/tables`);
+        showOutput('glue-tables-output', (data.tables||[]).map(t => `${t.name} | ${t.type||'TABLE'} | ${t.columns} cols | ${t.location||'—'}`).join('\n') || 'No tables');
+        toast(`${(data.tables||[]).length} tables in ${dbName}`, 'info');
+      } catch(err) { showOutput('glue-tables-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async listJobs() {
+      log('[GLUE] Listing jobs...', 'cmd');
+      try {
+        const data = await api('GET', '/api/glue/jobs');
+        const tbody = document.getElementById('glue-jobs-tbody');
+        tbody.innerHTML = (data.jobs||[]).map(j => `<tr>
+          <td style="color:var(--blue)">${escHtml(j.name)}</td>
+          <td><span class="badge badge-blue">JOB</span></td>
+          <td>
+            <button class="btn btn-primary" onclick="Portal.glue.runJob('${escHtml(j.name)}')" style="padding:2px 8px;font-size:10px">RUN</button>
+            <button class="btn btn-secondary" onclick="Portal.glue.getJobRuns('${escHtml(j.name)}')" style="padding:2px 8px;font-size:10px;margin-left:4px">RUNS</button>
+          </td>
+        </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text3);text-align:center">No jobs</td></tr>';
+        toast(`${(data.jobs||[]).length} jobs`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async listCrawlers() {
+      log('[GLUE] Listing crawlers...', 'cmd');
+      try {
+        const data = await api('GET', '/api/glue/crawlers');
+        const tbody = document.getElementById('glue-jobs-tbody');
+        tbody.innerHTML = (data.crawlers||[]).map(c => `<tr>
+          <td style="color:var(--blue)">${escHtml(c.name)}</td>
+          <td><span class="badge badge-yellow">CRAWLER</span></td>
+          <td><button class="btn btn-primary" onclick="Portal.glue.startCrawler('${escHtml(c.name)}')" style="padding:2px 8px;font-size:10px">START</button></td>
+        </tr>`).join('') || '<tr><td colspan="3" style="color:var(--text3);text-align:center">No crawlers</td></tr>';
+        toast(`${(data.crawlers||[]).length} crawlers`, 'info');
+      } catch(err) { toast(err.message, 'error'); }
+    },
+    async runJob(jobName) {
+      log(`[GLUE] Running job ${jobName}...`, 'cmd');
+      try {
+        const data = await api('POST', '/api/glue/jobs/run', { jobName });
+        showOutput('glue-run-output', `✓ Job started!\nJob: ${data.jobName}\nRun ID: ${data.jobRunId}`);
+        toast(`Job ${jobName} started!`, 'success');
+      } catch(err) { showOutput('glue-run-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async getJobRuns(jobName) {
+      try {
+        const data = await api('GET', `/api/glue/jobs/${encodeURIComponent(jobName)}/runs`);
+        showOutput('glue-run-output', (data.runs||[]).map(r => `${r.id} | ${r.status} | ${r.started?new Date(r.started).toLocaleString():'—'} | ${r.duration||'—'}s`).join('\n') || 'No runs');
+        toast(`${(data.runs||[]).length} runs`, 'info');
+      } catch(err) { showOutput('glue-run-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    },
+    async startCrawler(crawlerName) {
+      try {
+        const data = await api('POST', '/api/glue/crawlers/start', { crawlerName });
+        showOutput('glue-run-output', `✓ ${data.message}`);
+        toast(data.message, 'success');
+      } catch(err) { showOutput('glue-run-output', `Error: ${err.message}`); toast(err.message, 'error'); }
+    }
+  };
+
+  return { logout, loadResources, clearCreds, switchTab, toggleConsole, clearConsole, ec2, eks, asg, terminal, nginx, docker, k8s, helm, s3, iam, secrets, lambda, dns, templates, cicd, cwlogs, cost, audit, cfn, codebuild, pipeline, cache, dynamo, sqs, cdn, beanstalk, ssm, alarms, ecs, stepfn, events, kinesis, waf, backup, awsconfig, apigw, opensearch, glue };
 })();

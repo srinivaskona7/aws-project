@@ -753,6 +753,26 @@ pre {
       <div class="nav-tab" data-tab="logs">📋 Logs</div>
       <div class="nav-tab" data-tab="cost">💰 Cost</div>
       <div class="nav-tab" data-tab="audit">🕵 Audit</div>
+      <div class="nav-tab" data-tab="cfn">☁ CloudFormation</div>
+      <div class="nav-tab" data-tab="codebuild">🔨 CodeBuild</div>
+      <div class="nav-tab" data-tab="pipeline">🔄 Pipeline</div>
+      <div class="nav-tab" data-tab="cache">⚡ ElastiCache</div>
+      <div class="nav-tab" data-tab="dynamo">🗄 DynamoDB</div>
+      <div class="nav-tab" data-tab="sqs">📨 SQS</div>
+      <div class="nav-tab" data-tab="cdn">🌐 CloudFront</div>
+      <div class="nav-tab" data-tab="beanstalk">🫘 Beanstalk</div>
+      <div class="nav-tab" data-tab="ssm">🔧 SSM</div>
+      <div class="nav-tab" data-tab="alarms">🔔 Alarms</div>
+      <div class="nav-tab" data-tab="ecs">🐋 ECS</div>
+      <div class="nav-tab" data-tab="stepfn">🔀 Step Fn</div>
+      <div class="nav-tab" data-tab="events">⚡ EventBridge</div>
+      <div class="nav-tab" data-tab="kinesis">📊 Kinesis</div>
+      <div class="nav-tab" data-tab="waf">🛡 WAF</div>
+      <div class="nav-tab" data-tab="backup">💾 Backup</div>
+      <div class="nav-tab" data-tab="awsconfig">📐 Config</div>
+      <div class="nav-tab" data-tab="apigw">🔌 API GW</div>
+      <div class="nav-tab" data-tab="opensearch">🔍 OpenSearch</div>
+      <div class="nav-tab" data-tab="glue">🧬 Glue</div>
     </nav>
   </div>
 
@@ -1592,6 +1612,729 @@ spec:
             <table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Resource</th><th>Status</th></tr></thead>
             <tbody id="audit-tbody"><tr><td colspan="5" style="color:var(--text3);text-align:center">Click REFRESH to load audit logs</td></tr></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLOUDFORMATION TAB -->
+    <div class="tab-panel" id="tab-cfn">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">☁ CloudFormation Stack Manager</div></div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div>
+              <div class="form-group"><label>Stack Name</label><input type="text" id="cfn-stack-name" placeholder="my-stack"></div>
+              <div class="form-group"><label>Template Body (JSON/YAML)</label><textarea id="cfn-template-body" rows="8" placeholder='{"AWSTemplateFormatVersion":"2010-09-09","Resources":{"MyBucket":{"Type":"AWS::S3::Bucket"}}}'></textarea></div>
+              <div class="form-group"><label>Template S3 URL (alternative to body)</label><input type="text" id="cfn-template-url" placeholder="https://s3.amazonaws.com/mybucket/template.yaml"></div>
+            </div>
+            <div>
+              <div class="form-group"><label>Parameters (KEY=VALUE, one per line)</label><textarea id="cfn-params" rows="5" placeholder="Env=production&#10;InstanceType=t3.micro"></textarea></div>
+              <div class="form-group"><label>Capabilities</label>
+                <select id="cfn-capabilities">
+                  <option value="CAPABILITY_IAM,CAPABILITY_NAMED_IAM">IAM + Named IAM</option>
+                  <option value="CAPABILITY_IAM">IAM only</option>
+                  <option value="CAPABILITY_AUTO_EXPAND">Auto Expand</option>
+                </select>
+              </div>
+              <div class="toggle-group" style="margin-bottom:12px">
+                <label class="toggle"><input type="checkbox" id="cfn-dryrun"><span class="toggle-slider"></span></label>
+                <span style="font-size:11px;color:var(--text2)">Dry Run (validate only)</span>
+              </div>
+              <button class="btn btn-primary btn-full" onclick="Portal.cfn.deploy()">▶ DEPLOY STACK</button>
+              <button class="btn btn-danger btn-full" onclick="Portal.cfn.deleteStack()" style="margin-top:8px">🗑 DELETE STACK</button>
+            </div>
+          </div>
+          <div class="output-area" id="cfn-output"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">📋 Stacks</div>
+          <button class="btn btn-secondary" onclick="Portal.cfn.listStacks()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table><thead><tr><th>Stack Name</th><th>Status</th><th>Created</th><th>Updated</th><th>Actions</th></tr></thead>
+            <tbody id="cfn-stacks-tbody"><tr><td colspan="5" style="color:var(--text3);text-align:center">Click LIST to load</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CODEBUILD TAB -->
+    <div class="tab-panel" id="tab-codebuild">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🔨 Start Build</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Project Name</label><input type="text" id="cb-project-name" placeholder="my-build-project"></div>
+            <div class="form-group"><label>Source Version / Branch (optional)</label><input type="text" id="cb-source-version" placeholder="main"></div>
+            <div class="form-group"><label>Environment Variables (KEY=VALUE, one per line)</label><textarea id="cb-env-vars" rows="4" placeholder="NODE_ENV=production&#10;VERSION=1.0.0"></textarea></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.codebuild.startBuild()">▶ START BUILD</button>
+            <div class="output-area" id="cb-build-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📋 Projects & Builds</div>
+            <button class="btn btn-secondary" onclick="Portal.codebuild.listProjects()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Project Name</th><th>Actions</th></tr></thead>
+              <tbody id="cb-projects-tbody"><tr><td colspan="2" style="color:var(--text3);text-align:center">Click LIST</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CODEPIPELINE TAB -->
+    <div class="tab-panel" id="tab-pipeline">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🔄 CodePipeline Manager</div></div>
+        <div class="panel-body">
+          <div class="form-row" style="margin-bottom:12px">
+            <div class="form-group" style="flex:1"><label>Pipeline Name</label><input type="text" id="pipeline-name" placeholder="my-pipeline"></div>
+            <button class="btn btn-primary" onclick="Portal.pipeline.start()">▶ START</button>
+            <button class="btn btn-secondary" onclick="Portal.pipeline.getState()">STATUS</button>
+            <button class="btn btn-secondary" onclick="Portal.pipeline.list()">LIST ALL</button>
+          </div>
+          <div class="output-area" id="pipeline-output"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">📋 Pipelines</div></div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table><thead><tr><th>Pipeline</th><th>Stage</th><th>Status</th><th>Last Run</th><th>Actions</th></tr></thead>
+            <tbody id="pipeline-tbody"><tr><td colspan="5" style="color:var(--text3);text-align:center">Click LIST ALL</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ELASTICACHE TAB -->
+    <div class="tab-panel" id="tab-cache">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">⚡ Create ElastiCache Cluster</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Cluster ID</label><input type="text" id="cache-cluster-id" placeholder="my-redis-cluster"></div>
+            <div class="form-group"><label>Engine</label>
+              <select id="cache-engine">
+                <option value="redis">Redis</option>
+                <option value="memcached">Memcached</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Node Type</label>
+              <select id="cache-node-type">
+                <option value="cache.t3.micro">cache.t3.micro</option>
+                <option value="cache.t3.small">cache.t3.small</option>
+                <option value="cache.t3.medium">cache.t3.medium</option>
+                <option value="cache.r6g.large">cache.r6g.large</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Number of Nodes</label><input type="number" id="cache-num-nodes" value="1" min="1"></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.cache.create()">CREATE CLUSTER</button>
+            <div class="output-area" id="cache-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📋 Clusters</div>
+            <button class="btn btn-secondary" onclick="Portal.cache.list()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>ID</th><th>Engine</th><th>Status</th><th>Node Type</th><th>Actions</th></tr></thead>
+              <tbody id="cache-clusters-tbody"><tr><td colspan="5" style="color:var(--text3);text-align:center">Click LIST</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DYNAMODB TAB -->
+    <div class="tab-panel" id="tab-dynamo">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🗄 Create DynamoDB Table</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Table Name</label><input type="text" id="dynamo-table-name" placeholder="my-table"></div>
+            <div class="form-group"><label>Partition Key</label><input type="text" id="dynamo-pk" placeholder="id"></div>
+            <div class="form-group"><label>Partition Key Type</label>
+              <select id="dynamo-pk-type"><option value="S">String (S)</option><option value="N">Number (N)</option><option value="B">Binary (B)</option></select>
+            </div>
+            <div class="form-group"><label>Sort Key (optional)</label><input type="text" id="dynamo-sk" placeholder="createdAt"></div>
+            <div class="form-group"><label>Billing Mode</label>
+              <select id="dynamo-billing"><option value="PAY_PER_REQUEST">On-Demand</option><option value="PROVISIONED">Provisioned</option></select>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="Portal.dynamo.createTable()">CREATE TABLE</button>
+            <div class="output-area" id="dynamo-create-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📋 Tables & Data</div>
+            <button class="btn btn-secondary" onclick="Portal.dynamo.listTables()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Table Name</th><th>Actions</th></tr></thead>
+              <tbody id="dynamo-tables-tbody"><tr><td colspan="2" style="color:var(--text3);text-align:center">Click LIST</td></tr></tbody>
+              </table>
+            </div>
+            <div class="output-area" id="dynamo-scan-output" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SQS TAB -->
+    <div class="tab-panel" id="tab-sqs">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📨 SQS Queue Manager</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Queue Name</label><input type="text" id="sqs-queue-name" placeholder="my-queue"></div>
+            <div class="toggle-group" style="margin-bottom:12px">
+              <label class="toggle"><input type="checkbox" id="sqs-fifo"><span class="toggle-slider"></span></label>
+              <span style="font-size:11px;color:var(--text2)">FIFO Queue</span>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="Portal.sqs.create()">CREATE QUEUE</button>
+            <div style="margin-top:16px">
+              <div class="form-group"><label>Queue URL</label><input type="text" id="sqs-queue-url" placeholder="https://sqs.region.amazonaws.com/account/queue"></div>
+              <div class="form-group"><label>Message Body</label><textarea id="sqs-message" rows="3" placeholder='{"event":"order_placed","orderId":"123"}'></textarea></div>
+              <button class="btn btn-secondary btn-full" onclick="Portal.sqs.send()">SEND MESSAGE</button>
+              <button class="btn btn-secondary btn-full" onclick="Portal.sqs.receive()" style="margin-top:8px">RECEIVE MESSAGES</button>
+            </div>
+            <div class="output-area" id="sqs-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📋 Queues</div>
+            <button class="btn btn-secondary" onclick="Portal.sqs.list()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Queue Name</th><th>Actions</th></tr></thead>
+              <tbody id="sqs-queues-tbody"><tr><td colspan="2" style="color:var(--text3);text-align:center">Click LIST</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLOUDFRONT TAB -->
+    <div class="tab-panel" id="tab-cdn">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🌐 CloudFront Distributions</div>
+          <button class="btn btn-secondary" onclick="Portal.cdn.list()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table><thead><tr><th>ID</th><th>Domain Name</th><th>Status</th><th>Enabled</th><th>Origins</th><th>Actions</th></tr></thead>
+            <tbody id="cdn-distros-tbody"><tr><td colspan="6" style="color:var(--text3);text-align:center">Click LIST to load</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🚫 Cache Invalidation</div></div>
+        <div class="panel-body">
+          <div class="form-row">
+            <div class="form-group" style="flex:1"><label>Distribution ID</label><input type="text" id="cdn-dist-id" placeholder="E1ABCDEF12345"></div>
+            <div class="form-group" style="flex:1"><label>Paths (comma-separated)</label><input type="text" id="cdn-paths" value="/*" placeholder="/*,/api/*"></div>
+            <button class="btn btn-primary" onclick="Portal.cdn.invalidate()">INVALIDATE</button>
+          </div>
+          <div class="output-area" id="cdn-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ELASTIC BEANSTALK TAB -->
+    <div class="tab-panel" id="tab-beanstalk">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🫘 Elastic Beanstalk</div>
+          <button class="btn btn-secondary" onclick="Portal.beanstalk.list()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table><thead><tr><th>Environment</th><th>Application</th><th>Status</th><th>Health</th><th>URL</th><th>Actions</th></tr></thead>
+            <tbody id="beanstalk-envs-tbody"><tr><td colspan="6" style="color:var(--text3);text-align:center">Click LIST to load</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">⚡ Operations</div></div>
+        <div class="panel-body">
+          <div class="form-row">
+            <div class="form-group" style="flex:1"><label>Environment Name</label><input type="text" id="beanstalk-env-name" placeholder="my-env-prod"></div>
+            <button class="btn btn-secondary" onclick="Portal.beanstalk.restart()">RESTART APP</button>
+            <button class="btn btn-secondary" onclick="Portal.beanstalk.events()">GET EVENTS</button>
+          </div>
+          <div class="output-area" id="beanstalk-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SSM TAB -->
+    <div class="tab-panel" id="tab-ssm">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🔧 SSM Parameter Store</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Parameter Name (path)</label><input type="text" id="ssm-param-name" placeholder="/myapp/database/password"></div>
+            <div class="form-group"><label>Value</label><input type="text" id="ssm-param-value" placeholder="parameter-value"></div>
+            <div class="form-group"><label>Type</label>
+              <select id="ssm-param-type">
+                <option value="String">String</option>
+                <option value="StringList">StringList</option>
+                <option value="SecureString">SecureString</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <button class="btn btn-primary" onclick="Portal.ssm.put()">PUT PARAMETER</button>
+              <button class="btn btn-secondary" onclick="Portal.ssm.get()">GET VALUE</button>
+              <button class="btn btn-secondary" onclick="Portal.ssm.list()">LIST ALL</button>
+            </div>
+            <div class="output-area" id="ssm-param-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">⚡ Run Command on EC2</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Instance IDs (comma-separated)</label><input type="text" id="ssm-instance-ids" placeholder="i-1234567890abcdef0"></div>
+            <div class="form-group"><label>Commands (one per line)</label><textarea id="ssm-commands" rows="5" placeholder="echo hello&#10;uptime&#10;df -h"></textarea></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.ssm.runCommand()">▶ RUN COMMAND</button>
+            <div class="output-area" id="ssm-cmd-output"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLOUDWATCH ALARMS TAB -->
+    <div class="tab-panel" id="tab-alarms">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🔔 Create CloudWatch Alarm</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Alarm Name</label><input type="text" id="alarm-name" placeholder="High-CPU-Alarm"></div>
+            <div class="form-group"><label>Metric</label>
+              <select id="alarm-metric">
+                <option value="CPUUtilization">EC2 CPU Utilization</option>
+                <option value="NetworkIn">EC2 Network In</option>
+                <option value="NetworkOut">EC2 Network Out</option>
+                <option value="StatusCheckFailed">EC2 Status Check Failed</option>
+                <option value="DatabaseConnections">RDS Database Connections</option>
+                <option value="FreeStorageSpace">RDS Free Storage Space</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Namespace</label>
+              <select id="alarm-namespace">
+                <option value="AWS/EC2">AWS/EC2</option>
+                <option value="AWS/RDS">AWS/RDS</option>
+                <option value="AWS/ECS">AWS/ECS</option>
+                <option value="AWS/Lambda">AWS/Lambda</option>
+                <option value="AWS/ApplicationELB">AWS/ApplicationELB</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Threshold</label><input type="number" id="alarm-threshold" value="80"></div>
+            <div class="form-group"><label>Comparison</label>
+              <select id="alarm-comparison">
+                <option value="GreaterThanThreshold">Greater Than</option>
+                <option value="LessThanThreshold">Less Than</option>
+                <option value="GreaterThanOrEqualToThreshold">Greater Than or Equal</option>
+              </select>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="Portal.alarms.create()">CREATE ALARM</button>
+            <div class="output-area" id="alarm-create-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📋 Alarms</div>
+            <button class="btn btn-secondary" onclick="Portal.alarms.list()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Alarm Name</th><th>State</th><th>Metric</th><th>Threshold</th><th>Updated</th></tr></thead>
+              <tbody id="alarms-tbody"><tr><td colspan="5" style="color:var(--text3);text-align:center">Click LIST</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ECS TAB -->
+    <div class="tab-panel" id="tab-ecs">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🐋 ECS / Fargate</div>
+          <button class="btn btn-secondary" onclick="Portal.ecs.listClusters()" style="padding:4px 10px;font-size:10px;">↻ CLUSTERS</button>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table><thead><tr><th>Cluster</th><th>Actions</th></tr></thead>
+            <tbody id="ecs-clusters-tbody"><tr><td colspan="2" style="color:var(--text3);text-align:center">Click CLUSTERS to load</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Register Task Definition</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Family Name</label><input type="text" id="ecs-family" placeholder="my-app"></div>
+            <div class="form-group"><label>Container Image</label><input type="text" id="ecs-image" placeholder="nginx:latest"></div>
+            <div class="form-group"><label>CPU (units)</label><input type="text" id="ecs-cpu" value="256"></div>
+            <div class="form-group"><label>Memory (MB)</label><input type="text" id="ecs-memory" value="512"></div>
+            <div class="form-group"><label>Container Port</label><input type="number" id="ecs-port" value="80"></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.ecs.registerTaskDef()">REGISTER TASK DEF</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Run Task / Scale Service</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Cluster Name</label><input type="text" id="ecs-cluster-name" placeholder="my-cluster"></div>
+            <div class="form-group"><label>Task Definition</label><input type="text" id="ecs-task-def" placeholder="my-app:1"></div>
+            <div class="form-group"><label>Subnets (comma-separated)</label><input type="text" id="ecs-subnets" placeholder="subnet-xxx,subnet-yyy"></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.ecs.runTask()">▶ RUN TASK</button>
+            <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+              <div class="form-group"><label>Service Name (for scaling)</label><input type="text" id="ecs-service-name" placeholder="my-service"></div>
+              <div class="form-group"><label>Desired Count</label><input type="number" id="ecs-desired-count" value="2"></div>
+              <button class="btn btn-secondary btn-full" onclick="Portal.ecs.scale()">SCALE SERVICE</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="output-area" id="ecs-output" style="margin:0 0 16px 0"></div>
+    </div>
+
+    <!-- STEP FUNCTIONS TAB -->
+    <div class="tab-panel" id="tab-stepfn">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🔀 Step Functions</div>
+          <button class="btn btn-secondary" onclick="Portal.stepfn.list()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table><thead><tr><th>State Machine</th><th>Type</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="stepfn-machines-tbody"><tr><td colspan="4" style="color:var(--text3);text-align:center">Click LIST</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">▶ Start Execution</div></div>
+        <div class="panel-body">
+          <div class="form-group"><label>State Machine ARN</label><input type="text" id="stepfn-arn" placeholder="arn:aws:states:us-east-1:123456789:stateMachine:my-machine"></div>
+          <div class="form-group"><label>Input (JSON)</label><textarea id="stepfn-input" rows="4" placeholder='{"key": "value"}'></textarea></div>
+          <button class="btn btn-primary" onclick="Portal.stepfn.execute()">▶ EXECUTE</button>
+          <button class="btn btn-secondary" onclick="Portal.stepfn.listExecutions()" style="margin-left:8px">LIST EXECUTIONS</button>
+          <div class="output-area" id="stepfn-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EVENTBRIDGE TAB -->
+    <div class="tab-panel" id="tab-events">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">⚡ Create EventBridge Rule</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Rule Name</label><input type="text" id="eb-rule-name" placeholder="my-scheduled-rule"></div>
+            <div class="form-group"><label>Schedule Expression</label><input type="text" id="eb-schedule" placeholder="rate(5 minutes) or cron(0 12 * * ? *)"></div>
+            <div class="form-group"><label>Event Pattern (JSON, alternative to schedule)</label><textarea id="eb-pattern" rows="3" placeholder='{"source":["aws.ec2"]}'></textarea></div>
+            <div class="form-group"><label>Target ARN (Lambda, SQS, SNS...)</label><input type="text" id="eb-target-arn" placeholder="arn:aws:lambda:us-east-1:123:function:my-fn"></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.events.createRule()">CREATE RULE</button>
+            <div class="output-area" id="eb-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">📋 Rules</div>
+            <button class="btn btn-secondary" onclick="Portal.events.listRules()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Rule Name</th><th>State</th><th>Schedule</th></tr></thead>
+              <tbody id="eb-rules-tbody"><tr><td colspan="3" style="color:var(--text3);text-align:center">Click LIST</td></tr></tbody>
+              </table>
+            </div>
+            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+              <p class="section-title">Put Custom Event</p>
+              <div class="form-group"><label>Source</label><input type="text" id="eb-event-source" placeholder="myapp.orders"></div>
+              <div class="form-group"><label>Detail Type</label><input type="text" id="eb-detail-type" placeholder="OrderPlaced"></div>
+              <div class="form-group"><label>Detail (JSON)</label><textarea id="eb-detail" rows="2" placeholder='{"orderId":"123"}'></textarea></div>
+              <button class="btn btn-secondary btn-full" onclick="Portal.events.putEvent()">PUT EVENT</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KINESIS TAB -->
+    <div class="tab-panel" id="tab-kinesis">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📊 Kinesis Streams</div>
+            <button class="btn btn-secondary" onclick="Portal.kinesis.list()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Stream Name</th><th>Actions</th></tr></thead>
+              <tbody id="kinesis-streams-tbody"><tr><td colspan="2" style="color:var(--text3);text-align:center">Click LIST</td></tr></tbody>
+              </table>
+            </div>
+            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+              <div class="form-group"><label>New Stream Name</label><input type="text" id="kinesis-stream-name" placeholder="my-data-stream"></div>
+              <div class="form-group"><label>Shard Count</label><input type="number" id="kinesis-shards" value="1" min="1"></div>
+              <button class="btn btn-primary btn-full" onclick="Portal.kinesis.create()">CREATE STREAM</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📤 Put Record</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Stream Name</label><input type="text" id="kinesis-put-stream" placeholder="my-data-stream"></div>
+            <div class="form-group"><label>Partition Key</label><input type="text" id="kinesis-partition-key" placeholder="user-123"></div>
+            <div class="form-group"><label>Data (JSON or string)</label><textarea id="kinesis-data" rows="5" placeholder='{"event":"click","userId":"123","timestamp":1700000000}'></textarea></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.kinesis.put()">PUT RECORD</button>
+            <div class="output-area" id="kinesis-output"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WAF TAB -->
+    <div class="tab-panel" id="tab-waf">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🛡 WAF Web ACLs</div>
+            <button class="btn btn-secondary" onclick="Portal.waf.listAcls()" style="padding:4px 10px;font-size:10px;">↻ LIST ACLs</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Name</th><th>ID</th><th>Actions</th></tr></thead>
+              <tbody id="waf-acls-tbody"><tr><td colspan="3" style="color:var(--text3);text-align:center">Click LIST ACLs</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🚫 Create IP Block Set</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>IP Set Name</label><input type="text" id="waf-ipset-name" placeholder="blocked-ips"></div>
+            <div class="form-group"><label>IP Addresses (CIDR, one per line)</label><textarea id="waf-ips" rows="5" placeholder="1.2.3.4/32&#10;10.0.0.0/8"></textarea></div>
+            <div class="form-group"><label>Scope</label>
+              <select id="waf-scope"><option value="REGIONAL">Regional (ALB, API GW)</option><option value="CLOUDFRONT">CloudFront</option></select>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="Portal.waf.createIpSet()">CREATE IP SET</button>
+            <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+              <div class="form-group"><label>Associate WAF ACL ARN</label><input type="text" id="waf-acl-arn" placeholder="arn:aws:wafv2:..."></div>
+              <div class="form-group"><label>Resource ARN (ALB/CloudFront)</label><input type="text" id="waf-resource-arn" placeholder="arn:aws:elasticloadbalancing:..."></div>
+              <button class="btn btn-secondary btn-full" onclick="Portal.waf.associate()">ASSOCIATE WAF</button>
+            </div>
+            <div class="output-area" id="waf-output"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BACKUP TAB -->
+    <div class="tab-panel" id="tab-backup">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">💾 Create Backup Plan</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Plan Name</label><input type="text" id="backup-plan-name" placeholder="daily-backup-plan"></div>
+            <div class="form-group"><label>Schedule (cron expression)</label><input type="text" id="backup-schedule" value="cron(0 5 ? * * *)"></div>
+            <div class="form-group"><label>Retain for (days)</label><input type="number" id="backup-retention" value="30"></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.backup.create()">CREATE PLAN</button>
+            <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+              <div class="form-group"><label>On-Demand Backup: Resource ARN</label><input type="text" id="backup-resource-arn" placeholder="arn:aws:ec2:us-east-1:123:volume/vol-xxx"></div>
+              <button class="btn btn-secondary btn-full" onclick="Portal.backup.startNow()">START BACKUP NOW</button>
+            </div>
+            <div class="output-area" id="backup-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📋 Plans & Jobs</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary" onclick="Portal.backup.listPlans()" style="padding:4px 10px;font-size:10px;">PLANS</button>
+              <button class="btn btn-secondary" onclick="Portal.backup.listJobs()" style="padding:4px 10px;font-size:10px;">JOBS</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Name / ID</th><th>Status</th><th>Created</th></tr></thead>
+              <tbody id="backup-list-tbody"><tr><td colspan="3" style="color:var(--text3);text-align:center">Click PLANS or JOBS</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AWS CONFIG TAB -->
+    <div class="tab-panel" id="tab-awsconfig">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📐 AWS Config Compliance</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="Portal.awsconfig.compliance()" style="padding:6px 14px;font-size:11px;">↻ COMPLIANCE</button>
+            <button class="btn btn-secondary" onclick="Portal.awsconfig.listRules()" style="padding:6px 14px;font-size:11px;">LIST RULES</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="awsconfig-summary" style="margin-bottom:16px;display:none">
+            <div class="grid-3">
+              <div class="resource-card" style="border-color:var(--green)">
+                <div class="label">Compliant Rules</div>
+                <div class="count" id="awsconfig-compliant">—</div>
+              </div>
+              <div class="resource-card" style="border-color:var(--red)">
+                <div class="label">Non-Compliant Rules</div>
+                <div class="count" style="color:var(--red)" id="awsconfig-noncompliant">—</div>
+              </div>
+              <div class="resource-card">
+                <div class="label">Total Rules</div>
+                <div class="count" id="awsconfig-total">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table><thead><tr><th>Rule Name</th><th>Compliance</th><th>Source</th></tr></thead>
+            <tbody id="awsconfig-tbody"><tr><td colspan="3" style="color:var(--text3);text-align:center">Click COMPLIANCE or LIST RULES</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API GATEWAY TAB -->
+    <div class="tab-panel" id="tab-apigw">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🔌 API Gateway</div>
+          <button class="btn btn-secondary" onclick="Portal.apigw.listApis()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table><thead><tr><th>API Name</th><th>ID</th><th>Endpoint</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="apigw-apis-tbody"><tr><td colspan="5" style="color:var(--text3);text-align:center">Click LIST to load</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🚀 Deploy API</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>REST API ID</label><input type="text" id="apigw-api-id" placeholder="abc1234def"></div>
+            <div class="form-group"><label>Stage Name</label><input type="text" id="apigw-stage-name" placeholder="prod"></div>
+            <div class="form-group"><label>Description</label><input type="text" id="apigw-deploy-desc" placeholder="Deploy to production"></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.apigw.deploy()">DEPLOY</button>
+            <div class="output-area" id="apigw-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🔑 API Keys</div>
+            <button class="btn btn-secondary" onclick="Portal.apigw.listKeys()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="form-group"><label>New Key Name</label><input type="text" id="apigw-key-name" placeholder="my-client-key"></div>
+            <button class="btn btn-secondary btn-full" onclick="Portal.apigw.createKey()">CREATE API KEY</button>
+            <div class="table-wrap" style="margin-top:12px">
+              <table><thead><tr><th>Name</th><th>Enabled</th><th>Created</th></tr></thead>
+              <tbody id="apigw-keys-tbody"><tr><td colspan="3" style="color:var(--text3);text-align:center">Click LIST</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPENSEARCH TAB -->
+    <div class="tab-panel" id="tab-opensearch">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🔍 Create OpenSearch Domain</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Domain Name</label><input type="text" id="os-domain-name" placeholder="my-search-domain"></div>
+            <div class="form-group"><label>Engine Version</label>
+              <select id="os-engine-version">
+                <option value="OpenSearch_2.11">OpenSearch 2.11</option>
+                <option value="OpenSearch_2.9">OpenSearch 2.9</option>
+                <option value="OpenSearch_1.3">OpenSearch 1.3</option>
+                <option value="Elasticsearch_8.0">Elasticsearch 8.0</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Instance Type</label>
+              <select id="os-instance-type">
+                <option value="t3.small.search">t3.small.search</option>
+                <option value="t3.medium.search">t3.medium.search</option>
+                <option value="r6g.large.search">r6g.large.search</option>
+              </select>
+            </div>
+            <div class="form-group"><label>EBS Volume Size (GB)</label><input type="number" id="os-ebs-size" value="10" min="10"></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.opensearch.create()">CREATE DOMAIN</button>
+            <div class="output-area" id="os-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📋 Domains</div>
+            <button class="btn btn-secondary" onclick="Portal.opensearch.list()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Domain Name</th><th>Engine</th><th>Actions</th></tr></thead>
+              <tbody id="os-domains-tbody"><tr><td colspan="3" style="color:var(--text3);text-align:center">Click LIST</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GLUE TAB -->
+    <div class="tab-panel" id="tab-glue">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🧬 Glue Data Catalog</div>
+            <button class="btn btn-secondary" onclick="Portal.glue.listDatabases()" style="padding:4px 10px;font-size:10px;">↻ DATABASES</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Database</th><th>Description</th><th>Actions</th></tr></thead>
+              <tbody id="glue-databases-tbody"><tr><td colspan="3" style="color:var(--text3);text-align:center">Click DATABASES</td></tr></tbody>
+              </table>
+            </div>
+            <div class="output-area" id="glue-tables-output" style="margin-top:12px"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">⚙ Jobs & Crawlers</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary" onclick="Portal.glue.listJobs()" style="padding:4px 10px;font-size:10px;">JOBS</button>
+              <button class="btn btn-secondary" onclick="Portal.glue.listCrawlers()" style="padding:4px 10px;font-size:10px;">CRAWLERS</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Name</th><th>Type</th><th>Actions</th></tr></thead>
+              <tbody id="glue-jobs-tbody"><tr><td colspan="3" style="color:var(--text3);text-align:center">Click JOBS or CRAWLERS</td></tr></tbody>
+              </table>
+            </div>
+            <div class="output-area" id="glue-run-output" style="margin-top:12px"></div>
           </div>
         </div>
       </div>
