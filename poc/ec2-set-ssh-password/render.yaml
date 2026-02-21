@@ -8,7 +8,3 @@ services:
     envVars:
       - key: PORT
         value: 3000
-    disk:
-      name: data
-      mountPath: /app/data
-      sizeGB: 1
