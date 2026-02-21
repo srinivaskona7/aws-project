@@ -3,6 +3,7 @@ services:
     name: ec2-password-setup-ui
     env: docker
     plan: free
+    dockerContext: poc/ec2-set-ssh-password
     dockerCommand: npm start
     healthCheckPath: /api/health
     envVars:
