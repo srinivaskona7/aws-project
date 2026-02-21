@@ -4,6 +4,7 @@ services:
     env: docker
     plan: free
     dockerContext: poc/ec2-set-ssh-password
+    dockerfilePath: poc/ec2-set-ssh-password/Dockerfile
     dockerCommand: npm start
     healthCheckPath: /api/health
     envVars:
