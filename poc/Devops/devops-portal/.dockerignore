@@ -1,0 +1,8 @@
+node_modules
+.git
+*.log
+.env
+*.pem
+*.key
+devops-portal.db
+/tmp

@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevOps Portal — Infrastructure as a Service</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+<style>
+:root {
+  --bg: #080c0a;
+  --bg2: #0d1410;
+  --bg3: #111a16;
+  --border: #1a2e24;
+  --border2: #22402e;
+  --green: #00ff88;
+  --green2: #00cc6a;
+  --green3: #004422;
+  --yellow: #ffcc00;
+  --red: #ff4455;
+  --blue: #4488ff;
+  --text: #c8d8cc;
+  --text2: #7a9a84;
+  --text3: #4a6a54;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --font-ui: 'Space Grotesk', sans-serif;
+  --radius: 4px;
+  --glow: 0 0 20px rgba(0,255,136,0.15);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* Scanline overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ===== LOGIN OVERLAY ===== */
+#login-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8,12,10,0.98);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+
+.login-box {
+  width: 420px;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  padding: 40px;
+  position: relative;
+  box-shadow: var(--glow), inset 0 0 60px rgba(0,255,136,0.02);
+}
+
+.login-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-logo .ascii-art {
+  color: var(--green);
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: pre;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.login-logo h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+.login-logo p {
+  color: var(--text3);
+  font-size: 11px;
+  margin-top: 4px;
+  letter-spacing: 1px;
+}
+
+.form-group { margin-bottom: 16px; }
+
+.form-group label {
+  display: block;
+  color: var(--text2);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+  border-radius: var(--radius);
+}
+
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 1px rgba(0,255,136,0.2);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: all 0.15s;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--green);
+  color: var(--bg);
+  box-shadow: 0 0 20px rgba(0,255,136,0.3);
+}
+
+.btn-primary:hover {
+  background: var(--green2);
+  box-shadow: 0 0 30px rgba(0,255,136,0.5);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--green);
+  border: 1px solid var(--border2);
+}
+
+.btn-secondary:hover { border-color: var(--green); }
+
+.btn-danger {
+  background: transparent;
+  color: var(--red);
+  border: 1px solid rgba(255,68,85,0.3);
+}
+
+.btn-danger:hover { background: rgba(255,68,85,0.1); }
+
+.btn-full { width: 100%; justify-content: center; }
+
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+#login-error {
+  color: var(--red);
+  font-size: 12px;
+  margin-top: 12px;
+  text-align: center;
+  display: none;
+}
+
+/* ===== MAIN LAYOUT ===== */
+#app {
+  display: none;
+  height: 100vh;
+  flex-direction: column;
+}
+
+#app.visible { display: flex; }
+
+/* Status bar */
+#statusbar {
+  height: 32px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text3);
+}
+
+.status-item .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text3);
+}
+
+.status-item.ok .dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.status-item.warn .dot { background: var(--yellow); }
+.status-item.err .dot { background: var(--red); }
+
+.status-spacer { flex: 1; }
+
+/* Header */
+#header {
+  height: 50px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.logo {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.logo span { color: var(--text3); }
+
+/* Tab navigation */
+#nav {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+#nav::-webkit-scrollbar { height: 2px; }
+#nav::-webkit-scrollbar-track { background: transparent; }
+#nav::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: var(--text3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.15s;
+  border-radius: var(--radius) var(--radius) 0 0;
+  text-transform: uppercase;
+}
+
+.nav-tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.nav-tab.active { color: var(--green); border-bottom-color: var(--green); background: rgba(0,255,136,0.05); }
+
+.nav-tab .icon { font-size: 13px; }
+
+/* Content area */
+#content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tab-panel {
+  display: none;
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+.tab-panel.active { display: block; }
+
+/* Panel cards */
+.panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+
+.panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-body { padding: 16px; }
+
+/* Grid layouts */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+/* Resource cards */
+.resource-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.resource-card:hover {
+  border-color: var(--border2);
+  box-shadow: var(--glow);
+}
+
+.resource-card .label {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.resource-card .count {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--green);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.resource-card .sub {
+  font-size: 11px;
+  color: var(--text2);
+}
+
+/* Form row */
+.form-row { display: flex; gap: 12px; align-items: flex-end; }
+.form-row .form-group { flex: 1; margin-bottom: 0; }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+th {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border2);
+  color: var(--text3);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+tr:hover td { background: rgba(255,255,255,0.02); }
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 10px;
+  border-radius: 2px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.badge-green { background: rgba(0,255,136,0.15); color: var(--green); }
+.badge-red { background: rgba(255,68,85,0.15); color: var(--red); }
+.badge-yellow { background: rgba(255,204,0,0.15); color: var(--yellow); }
+.badge-blue { background: rgba(68,136,255,0.15); color: var(--blue); }
+
+/* Log console */
+#log-console {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  transition: height 0.2s;
+  height: 200px;
+}
+
+#log-console.collapsed { height: 32px; }
+
+.log-header {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.log-header-title {
+  font-size: 11px;
+  color: var(--text2);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.log-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green3);
+  animation: blink 1.5s infinite;
+}
+
+.log-dot.active { background: var(--green); }
+
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+#log-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-size: 11px;
+  line-height: 1.6;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+.log-line { margin-bottom: 1px; }
+.log-line .ts { color: var(--text3); margin-right: 8px; }
+.log-line.info { color: var(--text); }
+.log-line.success { color: var(--green); }
+.log-line.error { color: var(--red); }
+.log-line.warn { color: var(--yellow); }
+.log-line.cmd { color: var(--blue); }
+.log-line.done { color: var(--green); font-weight: 600; }
+
+/* Loading spinner */
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Output area */
+.output-area {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-size: 11px;
+  line-height: 1.7;
+  max-height: 400px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text);
+  margin-top: 12px;
+  display: none;
+}
+
+.output-area.visible { display: block; }
+
+/* Textarea */
+textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: var(--font-mono);
+}
+
+/* Select */
+select option { background: var(--bg2); }
+
+/* Switch toggle */
+.toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.toggle {
+  position: relative;
+  width: 36px;
+  height: 18px;
+}
+
+.toggle input { opacity: 0; width: 0; height: 0; }
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border2);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  left: 3px;
+  top: 3px;
+  background: var(--text3);
+  border-radius: 50%;
+  transition: 0.2s;
+}
+
+.toggle input:checked + .toggle-slider { background: var(--green3); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(18px); background: var(--green); }
+
+/* Notification toast */
+#toast-container {
+  position: fixed;
+  bottom: 220px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  border: 1px solid;
+  animation: slide-in 0.2s ease;
+  max-width: 320px;
+}
+
+.toast.success { background: rgba(0,68,34,0.9); border-color: var(--green); color: var(--green); }
+.toast.error { background: rgba(80,0,0,0.9); border-color: var(--red); color: var(--red); }
+.toast.info { background: rgba(0,20,80,0.9); border-color: var(--blue); color: var(--blue); }
+
+@keyframes slide-in { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .grid-4 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr; }
+}
+
+/* Code display */
+pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* Section headings */
+.section-title {
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* xterm terminal */
+#terminal-container {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 4px;
+  min-height: 400px;
+  position: relative;
+}
+
+.terminal-toolbar {
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.term-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.term-dot.red { background: #ff5f57; }
+.term-dot.yellow { background: #ffbd2e; }
+.term-dot.green { background: #28c840; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="ascii-art">  ██████╗ ███████╗██╗   ██╗ ██████╗ ██████╗ ███████╗
+  ██╔══██╗██╔════╝██║   ██║██╔═══██╗██╔══██╗██╔════╝
+  ██║  ██║█████╗  ██║   ██║██║   ██║██████╔╝███████╗
+  ██║  ██║██╔══╝  ╚██╗ ██╔╝██║   ██║██╔═══╝ ╚════██║
+  ██████╔╝███████╗ ╚████╔╝ ╚██████╔╝██║     ███████║
+  ╚═════╝ ╚══════╝  ╚═══╝   ╚═════╝ ╚═╝     ╚══════╝</span>
+      <h1>DEVOPS PORTAL</h1>
+      <p>Infrastructure as a Service Platform v1.0</p>
+    </div>
+    <form id="login-form">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="login-user" value="admin" placeholder="admin" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-pass" value="password" placeholder="password" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+        <span>▶</span> AUTHENTICATE
+      </button>
+      <div id="login-error">⚠ Invalid credentials</div>
+    </form>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- Status Bar -->
+  <div id="statusbar">
+    <div class="status-item" id="status-auth">
+      <div class="dot"></div>
+      <span id="status-user">Not logged in</span>
+    </div>
+    <div class="status-item" id="status-creds">
+      <div class="dot"></div>
+      <span id="status-creds-text">No AWS Credentials</span>
+    </div>
+    <div class="status-item" id="status-ws">
+      <div class="dot"></div>
+      <span>WebSocket</span>
+    </div>
+    <div class="status-spacer"></div>
+    <div class="status-item">
+      <span id="status-region" style="color: var(--text2)">—</span>
+    </div>
+    <div class="status-item" style="color: var(--text3)">
+      <span id="status-time"></span>
+    </div>
+    <button class="btn btn-danger" onclick="Portal.logout()" style="padding: 3px 10px; font-size: 10px;">LOGOUT</button>
+  </div>
+
+  <!-- Header + Nav -->
+  <div id="header">
+    <div class="logo">DEVOPS<span>/</span>PORTAL</div>
+    <nav id="nav">
+      <div class="nav-tab active" data-tab="home">🏠 Home</div>
+      <div class="nav-tab" data-tab="ec2">⚡ EC2</div>
+      <div class="nav-tab" data-tab="eks">☸ EKS</div>
+      <div class="nav-tab" data-tab="asg">⚖ ASG</div>
+      <div class="nav-tab" data-tab="terminal">💻 Shell</div>
+      <div class="nav-tab" data-tab="nginx">🌐 Nginx</div>
+      <div class="nav-tab" data-tab="docker">🐳 Docker</div>
+      <div class="nav-tab" data-tab="k8s">⚓ K8s</div>
+      <div class="nav-tab" data-tab="helm">⛵ Helm</div>
+      <div class="nav-tab" data-tab="s3">🪣 S3</div>
+      <div class="nav-tab" data-tab="iam">🔐 IAM</div>
+      <div class="nav-tab" data-tab="secrets">🔑 Secrets</div>
+      <div class="nav-tab" data-tab="lambda">λ Lambda</div>
+      <div class="nav-tab" data-tab="route53">🌍 DNS</div>
+      <div class="nav-tab" data-tab="templates">📦 Templates</div>
+      <div class="nav-tab" data-tab="cicd">🔄 CI/CD</div>
+      <div class="nav-tab" data-tab="logs">📋 Logs</div>
+      <div class="nav-tab" data-tab="cost">💰 Cost</div>
+      <div class="nav-tab" data-tab="audit">🕵 Audit</div>
+    </nav>
+  </div>
+
+  <!-- Content -->
+  <div id="content">
+
+    <!-- HOME TAB -->
+    <div class="tab-panel active" id="tab-home">
+      <div class="grid-2">
+        <!-- AWS Credentials -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">🔑 AWS Credentials</div>
+            <button class="btn btn-secondary" onclick="Portal.clearCreds()" style="padding:4px 10px;font-size:10px;">CLEAR</button>
+          </div>
+          <div class="panel-body">
+            <form id="creds-form">
+              <div class="form-group">
+                <label>AWS Access Key ID</label>
+                <input type="text" id="creds-key" placeholder="AKIAIOSFODNN7EXAMPLE" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label>AWS Secret Access Key</label>
+                <input type="password" id="creds-secret" placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" autocomplete="off">
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Region</label>
+                  <select id="creds-region">
+                    <option value="us-east-1">us-east-1 (N. Virginia)</option>
+                    <option value="us-east-2">us-east-2 (Ohio)</option>
+                    <option value="us-west-1">us-west-1 (N. California)</option>
+                    <option value="us-west-2">us-west-2 (Oregon)</option>
+                    <option value="eu-west-1">eu-west-1 (Ireland)</option>
+                    <option value="eu-central-1">eu-central-1 (Frankfurt)</option>
+                    <option value="ap-southeast-1">ap-southeast-1 (Singapore)</option>
+                    <option value="ap-south-1">ap-south-1 (Mumbai)</option>
+                    <option value="ap-northeast-1">ap-northeast-1 (Tokyo)</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-primary" id="creds-btn">SAVE CREDS</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">📊 Infrastructure Overview</div>
+            <button class="btn btn-secondary" onclick="Portal.loadResources()" style="padding:4px 10px;font-size:10px;">↻ REFRESH</button>
+          </div>
+          <div class="panel-body">
+            <div class="grid-2" id="resource-counts">
+              <div class="resource-card" onclick="Portal.switchTab('ec2')">
+                <div class="label">EC2 Instances</div>
+                <div class="count" id="count-ec2">—</div>
+                <div class="sub">running / total</div>
+              </div>
+              <div class="resource-card" onclick="Portal.switchTab('eks')">
+                <div class="label">EKS Clusters</div>
+                <div class="count" id="count-eks">—</div>
+                <div class="sub">active clusters</div>
+              </div>
+              <div class="resource-card" onclick="Portal.switchTab('s3')">
+                <div class="label">S3 Buckets</div>
+                <div class="count" id="count-s3">—</div>
+                <div class="sub">total buckets</div>
+              </div>
+              <div class="resource-card" onclick="Portal.switchTab('asg')">
+                <div class="label">Auto Scaling Groups</div>
+                <div class="count" id="count-asg">—</div>
+                <div class="sub">groups</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EC2 Instances Table -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">⚡ Running EC2 Instances</div>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table id="ec2-table">
+              <thead>
+                <tr><th>Name</th><th>Instance ID</th><th>Type</th><th>State</th><th>Public IP</th><th>Private IP</th><th>AZ</th><th>Launch Time</th></tr>
+              </thead>
+              <tbody id="ec2-tbody">
+                <tr><td colspan="8" style="color:var(--text3);text-align:center">Load AWS credentials and click Refresh</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Service Quick Actions -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">⚡ Quick Actions</div></div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <button class="btn btn-secondary btn-full" onclick="Portal.switchTab('ec2')" style="padding:12px">⚡ Launch EC2</button>
+            <button class="btn btn-secondary btn-full" onclick="Portal.switchTab('eks')" style="padding:12px">☸ Deploy EKS</button>
+            <button class="btn btn-secondary btn-full" onclick="Portal.switchTab('terminal')" style="padding:12px">💻 Open Shell</button>
+            <button class="btn btn-secondary btn-full" onclick="Portal.switchTab('templates')" style="padding:12px">📦 Templates</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EC2 TAB -->
+    <div class="tab-panel" id="tab-ec2">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">⚡ Terraform EC2 Instance Provisioner</div></div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div>
+              <div class="form-group"><label>Instance Name</label><input type="text" id="ec2-name" value="my-ec2-instance" placeholder="my-ec2-instance"></div>
+              <div class="form-group"><label>Instance Type</label>
+                <select id="ec2-type">
+                  <option value="t3.micro">t3.micro (2 vCPU, 1GB)</option>
+                  <option value="t3.small">t3.small (2 vCPU, 2GB)</option>
+                  <option value="t3.medium" selected>t3.medium (2 vCPU, 4GB)</option>
+                  <option value="t3.large">t3.large (2 vCPU, 8GB)</option>
+                  <option value="m5.large">m5.large (2 vCPU, 8GB)</option>
+                  <option value="c5.large">c5.large (2 vCPU, 4GB compute)</option>
+                </select>
+              </div>
+              <div class="form-group"><label>AMI ID</label><input type="text" id="ec2-ami" value="ami-0c55b159cbfafe1f0" placeholder="ami-0c55b159cbfafe1f0"></div>
+              <div class="form-group"><label>Key Pair Name</label><input type="text" id="ec2-keypair" placeholder="my-key-pair"></div>
+            </div>
+            <div>
+              <div class="form-group"><label>VPC ID (optional)</label><input type="text" id="ec2-vpc" placeholder="vpc-xxxxxxxx"></div>
+              <div class="form-group"><label>Subnet ID (optional)</label><input type="text" id="ec2-subnet" placeholder="subnet-xxxxxxxx"></div>
+              <div class="form-group"><label>Security Group IDs (comma-separated)</label><input type="text" id="ec2-sgs" placeholder="sg-xxxxxxxx,sg-yyyyyyyy"></div>
+              <div class="form-group"><label>Region Override</label><input type="text" id="ec2-region" placeholder="us-east-1"></div>
+            </div>
+          </div>
+          <div class="form-row" style="margin-top:12px">
+            <div class="toggle-group">
+              <label class="toggle"><input type="checkbox" id="ec2-dryrun"><span class="toggle-slider"></span></label>
+              <span style="font-size:11px;color:var(--text2)">Dry Run (plan only)</span>
+            </div>
+            <button class="btn btn-primary" onclick="Portal.ec2.deploy()">▶ DEPLOY EC2</button>
+            <button class="btn btn-secondary" onclick="Portal.ec2.genTfVpc()">🏗 DEPLOY VPC FIRST</button>
+          </div>
+          <div class="output-area" id="ec2-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EKS TAB -->
+    <div class="tab-panel" id="tab-eks">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">☸ EKS Cluster Deployment</div></div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div>
+              <div class="form-group"><label>Cluster Name</label><input type="text" id="eks-name" value="devops-eks-cluster" placeholder="my-cluster"></div>
+              <div class="form-group"><label>Kubernetes Version</label>
+                <select id="eks-version">
+                  <option value="1.29">1.29 (latest)</option>
+                  <option value="1.28" selected>1.28</option>
+                  <option value="1.27">1.27</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Node Group Name</label><input type="text" id="eks-ng-name" value="devops-nodes" placeholder="node-group"></div>
+              <div class="form-group"><label>Node Instance Type</label>
+                <select id="eks-instance">
+                  <option value="t3.small">t3.small</option>
+                  <option value="t3.medium" selected>t3.medium</option>
+                  <option value="t3.large">t3.large</option>
+                  <option value="m5.large">m5.large</option>
+                  <option value="m5.xlarge">m5.xlarge</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <div class="form-group"><label>Min Nodes</label><input type="number" id="eks-min" value="1" min="1" max="10"></div>
+              <div class="form-group"><label>Max Nodes</label><input type="number" id="eks-max" value="5" min="1" max="100"></div>
+              <div class="form-group"><label>Desired Nodes</label><input type="number" id="eks-desired" value="2" min="1" max="50"></div>
+              <div class="form-group"><label>Region</label><input type="text" id="eks-region" placeholder="us-east-1"></div>
+            </div>
+          </div>
+          <div class="form-row" style="margin-top:12px">
+            <div class="toggle-group">
+              <label class="toggle"><input type="checkbox" id="eks-dryrun"><span class="toggle-slider"></span></label>
+              <span style="font-size:11px;color:var(--text2)">Dry Run</span>
+            </div>
+            <button class="btn btn-primary" onclick="Portal.eks.deploy()">▶ DEPLOY EKS</button>
+          </div>
+          <div class="output-area" id="eks-output"></div>
+        </div>
+      </div>
+
+      <!-- K8s Resources Quick Access -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">☸ Cluster Operations</div></div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <button class="btn btn-secondary" onclick="Portal.k8s.quickGet('nodes')">Get Nodes</button>
+            <button class="btn btn-secondary" onclick="Portal.k8s.quickGet('pods --all-namespaces')">All Pods</button>
+            <button class="btn btn-secondary" onclick="Portal.k8s.quickGet('services --all-namespaces')">Services</button>
+            <button class="btn btn-secondary" onclick="Portal.k8s.quickGet('deployments --all-namespaces')">Deployments</button>
+          </div>
+          <div class="output-area" id="eks-ops-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ASG TAB -->
+    <div class="tab-panel" id="tab-asg">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">⚖ Auto Scaling Group Setup</div></div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div>
+              <div class="form-group"><label>ASG Name</label><input type="text" id="asg-name" value="devops-asg" placeholder="my-asg"></div>
+              <div class="form-group"><label>AMI ID</label><input type="text" id="asg-ami" value="ami-0c55b159cbfafe1f0"></div>
+              <div class="form-group"><label>Instance Type</label>
+                <select id="asg-type">
+                  <option value="t3.micro">t3.micro</option>
+                  <option value="t3.small" selected>t3.small</option>
+                  <option value="t3.medium">t3.medium</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Key Pair (optional)</label><input type="text" id="asg-keypair" placeholder="my-key-pair"></div>
+            </div>
+            <div>
+              <div class="form-group"><label>Min Size</label><input type="number" id="asg-min" value="1" min="0"></div>
+              <div class="form-group"><label>Max Size</label><input type="number" id="asg-max" value="5" min="1"></div>
+              <div class="form-group"><label>Desired Capacity</label><input type="number" id="asg-desired" value="2" min="0"></div>
+              <div class="form-group"><label>Subnet IDs (comma-separated)</label><input type="text" id="asg-subnets" placeholder="subnet-xxx,subnet-yyy"></div>
+            </div>
+          </div>
+          <div class="form-row" style="margin-top:12px">
+            <div class="toggle-group">
+              <label class="toggle"><input type="checkbox" id="asg-dryrun"><span class="toggle-slider"></span></label>
+              <span style="font-size:11px;color:var(--text2)">Dry Run</span>
+            </div>
+            <button class="btn btn-primary" onclick="Portal.asg.deploy()">▶ CREATE ASG</button>
+          </div>
+          <div class="output-area" id="asg-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TERMINAL TAB -->
+    <div class="tab-panel" id="tab-terminal">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">💻 SSH Virtual Shell</div></div>
+        <div class="panel-body">
+          <div class="grid-2" style="margin-bottom:12px">
+            <div>
+              <div class="form-group"><label>EC2 Hostname / IP</label><input type="text" id="ssh-host" placeholder="54.123.45.67 or ec2-54-123-45-67.compute-1.amazonaws.com"></div>
+              <div class="form-group"><label>Port</label><input type="number" id="ssh-port" value="22"></div>
+              <div class="form-group"><label>Username</label><input type="text" id="ssh-user" value="ec2-user" placeholder="ec2-user"></div>
+            </div>
+            <div>
+              <div class="form-group"><label>Auth Method</label>
+                <select id="ssh-auth-method" onchange="Portal.terminal.toggleAuth()">
+                  <option value="key">PEM Key File</option>
+                  <option value="password">Password</option>
+                </select>
+              </div>
+              <div id="ssh-key-group">
+                <div class="form-group"><label>PEM Private Key</label><textarea id="ssh-key" rows="5" placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;...paste your .pem key contents here...&#10;-----END RSA PRIVATE KEY-----"></textarea></div>
+              </div>
+              <div id="ssh-pass-group" style="display:none">
+                <div class="form-group"><label>Password</label><input type="password" id="ssh-pass" placeholder="SSH password"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <button class="btn btn-secondary" onclick="Portal.terminal.testConnection()">TEST CONNECTION</button>
+            <button class="btn btn-primary" id="ssh-connect-btn" onclick="Portal.terminal.connect()">▶ OPEN SHELL</button>
+            <button class="btn btn-danger" id="ssh-disconnect-btn" onclick="Portal.terminal.disconnect()" style="display:none">■ DISCONNECT</button>
+          </div>
+          <div id="terminal-status" style="margin:8px 0; font-size:11px; color:var(--text3)"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Terminal Emulator</div></div>
+        <div class="panel-body" style="padding:0">
+          <div class="terminal-toolbar">
+            <div class="term-dot red"></div>
+            <div class="term-dot yellow"></div>
+            <div class="term-dot green"></div>
+            <span style="font-size:11px;color:var(--text3);margin-left:8px" id="term-title">Not connected</span>
+          </div>
+          <div id="terminal-container" style="padding:8px"></div>
+        </div>
+      </div>
+      <!-- Quick Commands -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">⚡ Quick Commands</div></div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <button class="btn btn-secondary" onclick="Portal.terminal.runCmd('uptime && df -h && free -h')">System Info</button>
+            <button class="btn btn-secondary" onclick="Portal.terminal.runCmd('docker ps -a')">Docker PS</button>
+            <button class="btn btn-secondary" onclick="Portal.terminal.runCmd('kubectl get pods --all-namespaces')">K8s Pods</button>
+            <button class="btn btn-secondary" onclick="Portal.terminal.runCmd('systemctl status nginx')">Nginx Status</button>
+            <button class="btn btn-secondary" onclick="Portal.terminal.runCmd('tail -100 /var/log/messages')">System Logs</button>
+            <button class="btn btn-secondary" onclick="Portal.terminal.runCmd('ps aux | head -20')">Processes</button>
+            <button class="btn btn-secondary" onclick="Portal.terminal.runCmd('netstat -tlnp 2>/dev/null || ss -tlnp')">Open Ports</button>
+            <button class="btn btn-secondary" onclick="Portal.terminal.runCmd('cat /etc/os-release')">OS Info</button>
+          </div>
+          <div class="form-row" style="margin-top:12px">
+            <div class="form-group" style="flex:1;margin:0"><input type="text" id="quick-cmd-input" placeholder="Enter command to execute..." onkeydown="if(event.key==='Enter') Portal.terminal.runCmd(this.value)"></div>
+            <button class="btn btn-primary" onclick="Portal.terminal.runCmd(document.getElementById('quick-cmd-input').value)">RUN</button>
+          </div>
+          <div class="output-area" id="cmd-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NGINX TAB -->
+    <div class="tab-panel" id="tab-nginx">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🌐 Nginx Config Generator</div></div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div>
+              <div class="form-group"><label>Server Name / Domain</label><input type="text" id="nginx-domain" placeholder="myapp.example.com"></div>
+              <div class="form-group"><label>Upstream Proxy Pass</label><input type="text" id="nginx-proxy" placeholder="http://localhost:3000"></div>
+              <div class="form-group"><label>Listen Port</label><input type="number" id="nginx-port" value="80"></div>
+            </div>
+            <div>
+              <div class="form-group"><label>SSL/TLS</label>
+                <div class="toggle-group" style="margin-top:8px">
+                  <label class="toggle"><input type="checkbox" id="nginx-ssl" onchange="Portal.nginx.toggleSsl()"><span class="toggle-slider"></span></label>
+                  <span style="font-size:11px;color:var(--text2)">Enable HTTPS</span>
+                </div>
+              </div>
+              <div id="nginx-ssl-fields" style="display:none">
+                <div class="form-group"><label>SSL Certificate Path</label><input type="text" id="nginx-cert" placeholder="/etc/ssl/certs/server.crt"></div>
+                <div class="form-group"><label>SSL Key Path</label><input type="text" id="nginx-key" placeholder="/etc/ssl/private/server.key"></div>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="Portal.nginx.generate()" style="margin-top:12px">GENERATE CONFIG</button>
+          <div id="nginx-output" class="output-area"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOCKER TAB -->
+    <div class="tab-panel" id="tab-docker">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🐳 Docker Build</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Image Name</label><input type="text" id="docker-image-name" placeholder="myapp"></div>
+            <div class="form-group"><label>Tag</label><input type="text" id="docker-tag" value="latest"></div>
+            <div class="form-group"><label>Dockerfile Content</label><textarea id="docker-dockerfile" rows="8" placeholder="FROM node:18-alpine&#10;WORKDIR /app&#10;COPY package*.json ./&#10;RUN npm ci --production&#10;COPY . .&#10;EXPOSE 3000&#10;CMD [&quot;node&quot;, &quot;app.js&quot;]"></textarea></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.docker.build()" style="margin-top:8px">🔨 BUILD IMAGE</button>
+            <div class="output-area" id="docker-build-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">▶ Docker Run</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Image</label><input type="text" id="docker-run-image" placeholder="nginx:latest"></div>
+            <div class="form-group"><label>Container Name</label><input type="text" id="docker-run-name" placeholder="my-container"></div>
+            <div class="form-group"><label>Port Mapping (e.g. 8080:80)</label><input type="text" id="docker-run-ports" placeholder="8080:80,443:443"></div>
+            <div class="form-group"><label>Environment Vars (KEY=VALUE, comma separated)</label><input type="text" id="docker-run-env" placeholder="NODE_ENV=production,PORT=3000"></div>
+            <div class="toggle-group" style="margin-bottom:12px">
+              <label class="toggle"><input type="checkbox" id="docker-run-detach" checked><span class="toggle-slider"></span></label>
+              <span style="font-size:11px;color:var(--text2)">Detach (-d)</span>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="Portal.docker.run()">▶ RUN CONTAINER</button>
+            <div class="output-area" id="docker-run-output"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Docker PS -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📋 Running Containers</div>
+          <div style="display:flex;gap:8px">
+            <div class="toggle-group">
+              <label class="toggle"><input type="checkbox" id="docker-ps-all"><span class="toggle-slider"></span></label>
+              <span style="font-size:11px;color:var(--text2)">Show all</span>
+            </div>
+            <button class="btn btn-secondary" onclick="Portal.docker.ps()" style="padding:4px 10px;font-size:10px;">↻ REFRESH</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table><thead><tr><th>ID</th><th>Image</th><th>Command</th><th>Status</th><th>Ports</th><th>Name</th><th>Actions</th></tr></thead>
+            <tbody id="docker-containers-tbody"><tr><td colspan="7" style="color:var(--text3);text-align:center">Click Refresh to load containers</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KUBERNETES TAB -->
+    <div class="tab-panel" id="tab-k8s">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">⚓ Apply Manifest</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Namespace</label><input type="text" id="k8s-ns" value="default"></div>
+            <div class="form-group"><label>Kubernetes YAML Manifest</label>
+              <textarea id="k8s-manifest" rows="14" placeholder="apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: nginx:latest
+        ports:
+        - containerPort: 80"></textarea>
+            </div>
+            <div class="form-row" style="margin-top:8px">
+              <div class="toggle-group">
+                <label class="toggle"><input type="checkbox" id="k8s-dryrun"><span class="toggle-slider"></span></label>
+                <span style="font-size:11px;color:var(--text2)">Dry Run</span>
+              </div>
+              <button class="btn btn-primary" onclick="Portal.k8s.apply()">KUBECTL APPLY</button>
+            </div>
+            <div class="output-area" id="k8s-apply-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🔍 Resource Explorer</div></div>
+          <div class="panel-body">
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label>Resource Type</label>
+                <select id="k8s-resource-type">
+                  <option value="pods">Pods</option>
+                  <option value="deployments">Deployments</option>
+                  <option value="services">Services</option>
+                  <option value="ingresses">Ingresses</option>
+                  <option value="configmaps">ConfigMaps</option>
+                  <option value="secrets">Secrets</option>
+                  <option value="nodes">Nodes</option>
+                  <option value="namespaces">Namespaces</option>
+                  <option value="persistentvolumeclaims">PVCs</option>
+                  <option value="jobs">Jobs</option>
+                  <option value="cronjobs">CronJobs</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:1">
+                <label>Namespace</label>
+                <input type="text" id="k8s-get-ns" value="default">
+              </div>
+            </div>
+            <div class="toggle-group" style="margin-bottom:12px">
+              <label class="toggle"><input type="checkbox" id="k8s-all-ns"><span class="toggle-slider"></span></label>
+              <span style="font-size:11px;color:var(--text2)">All Namespaces</span>
+            </div>
+            <button class="btn btn-primary" onclick="Portal.k8s.get()">KUBECTL GET</button>
+            <div class="output-area" id="k8s-get-output"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scale & Rollout -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">⚖ Scale & Rollout</div></div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div>
+              <p class="section-title">Scale Deployment</p>
+              <div class="form-row">
+                <div class="form-group"><label>Deployment Name</label><input type="text" id="k8s-scale-name" placeholder="my-deployment"></div>
+                <div class="form-group"><label>Replicas</label><input type="number" id="k8s-scale-replicas" value="3" min="0"></div>
+                <div class="form-group"><label>Namespace</label><input type="text" id="k8s-scale-ns" value="default"></div>
+                <button class="btn btn-primary" onclick="Portal.k8s.scale()">SCALE</button>
+              </div>
+            </div>
+            <div>
+              <p class="section-title">Rollout Management</p>
+              <div class="form-row">
+                <div class="form-group"><label>Deployment Name</label><input type="text" id="k8s-rollout-name" placeholder="my-deployment"></div>
+                <div class="form-group"><label>Action</label>
+                  <select id="k8s-rollout-action">
+                    <option value="status">Status</option>
+                    <option value="restart">Restart</option>
+                    <option value="undo">Undo (Rollback)</option>
+                    <option value="history">History</option>
+                  </select>
+                </div>
+                <button class="btn btn-secondary" onclick="Portal.k8s.rollout()">RUN</button>
+              </div>
+            </div>
+          </div>
+          <div class="output-area" id="k8s-scale-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HELM TAB -->
+    <div class="tab-panel" id="tab-helm">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">⛵ Helm Chart Deployer</div></div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div>
+              <div class="form-group"><label>Release Name</label><input type="text" id="helm-release" placeholder="my-release"></div>
+              <div class="form-group"><label>Chart (e.g. stable/nginx or ./mychart)</label><input type="text" id="helm-chart" placeholder="bitnami/nginx"></div>
+              <div class="form-group"><label>Repo Name (optional)</label><input type="text" id="helm-repo-name" placeholder="bitnami"></div>
+              <div class="form-group"><label>Repo URL (optional)</label><input type="text" id="helm-repo-url" placeholder="https://charts.bitnami.com/bitnami"></div>
+            </div>
+            <div>
+              <div class="form-group"><label>Namespace</label><input type="text" id="helm-ns" value="default"></div>
+              <div class="form-group"><label>Values (key=value, one per line)</label><textarea id="helm-values" rows="5" placeholder="replicaCount=2&#10;service.type=LoadBalancer&#10;image.tag=latest"></textarea></div>
+              <div class="toggle-group">
+                <label class="toggle"><input type="checkbox" id="helm-dryrun"><span class="toggle-slider"></span></label>
+                <span style="font-size:11px;color:var(--text2)">Dry Run</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-row" style="margin-top:12px">
+            <button class="btn btn-primary" onclick="Portal.helm.install()">⛵ INSTALL / UPGRADE</button>
+            <button class="btn btn-secondary" onclick="Portal.helm.list()">LIST RELEASES</button>
+            <button class="btn btn-danger" onclick="Portal.helm.rollback()">↩ ROLLBACK</button>
+          </div>
+          <div class="output-area" id="helm-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S3 TAB -->
+    <div class="tab-panel" id="tab-s3">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🪣 Create S3 Bucket</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Bucket Name (must be globally unique)</label><input type="text" id="s3-bucket-name" placeholder="my-bucket-20240101"></div>
+            <div class="form-group"><label>Region</label><input type="text" id="s3-bucket-region" placeholder="us-east-1"></div>
+            <div class="toggle-group" style="margin-bottom:8px">
+              <label class="toggle"><input type="checkbox" id="s3-versioning"><span class="toggle-slider"></span></label>
+              <span style="font-size:11px;color:var(--text2)">Enable Versioning</span>
+            </div>
+            <div class="toggle-group" style="margin-bottom:12px">
+              <label class="toggle"><input type="checkbox" id="s3-public-block" checked><span class="toggle-slider"></span></label>
+              <span style="font-size:11px;color:var(--text2)">Block Public Access</span>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="Portal.s3.create()">CREATE BUCKET</button>
+            <div class="output-area" id="s3-create-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">📋 My Buckets</div>
+            <button class="btn btn-secondary" onclick="Portal.s3.list()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Bucket Name</th><th>Created</th><th>Actions</th></tr></thead>
+              <tbody id="s3-list-tbody"><tr><td colspan="3" style="color:var(--text3);text-align:center">Click LIST to load</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IAM TAB -->
+    <div class="tab-panel" id="tab-iam">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🔐 Create IAM Role</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Role Name</label><input type="text" id="iam-role-name" placeholder="MyServiceRole"></div>
+            <div class="form-group"><label>Trust Service (assumes role)</label>
+              <select id="iam-trust-service">
+                <option value="ec2.amazonaws.com">EC2</option>
+                <option value="lambda.amazonaws.com">Lambda</option>
+                <option value="eks.amazonaws.com">EKS</option>
+                <option value="ecs-tasks.amazonaws.com">ECS Tasks</option>
+                <option value="codebuild.amazonaws.com">CodeBuild</option>
+                <option value="codepipeline.amazonaws.com">CodePipeline</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Description</label><input type="text" id="iam-role-desc" placeholder="Created by DevOps Portal"></div>
+            <div class="form-group"><label>Attach Managed Policies (comma-separated ARNs)</label>
+              <textarea id="iam-policies" rows="3" placeholder="arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"></textarea>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="Portal.iam.createRole()">CREATE ROLE</button>
+            <div class="output-area" id="iam-role-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📋 IAM Roles</div>
+            <button class="btn btn-secondary" onclick="Portal.iam.listRoles()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Role Name</th><th>Created</th><th>ARN</th></tr></thead>
+              <tbody id="iam-roles-tbody"><tr><td colspan="3" style="color:var(--text3);text-align:center">Click LIST to load</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECRETS TAB -->
+    <div class="tab-panel" id="tab-secrets">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🔑 Store Secret</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Secret Name</label><input type="text" id="secret-name" placeholder="myapp/database/password"></div>
+            <div class="form-group"><label>Secret Value (string or JSON)</label><textarea id="secret-value" rows="4" placeholder='{"username": "admin", "password": "secret123"}'></textarea></div>
+            <div class="form-group"><label>Description (optional)</label><input type="text" id="secret-desc" placeholder="Database password for production"></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.secrets.create()">STORE SECRET</button>
+            <div class="output-area" id="secret-create-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📋 Secrets</div>
+            <button class="btn btn-secondary" onclick="Portal.secrets.list()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Name</th><th>Description</th><th>Last Changed</th><th>Actions</th></tr></thead>
+              <tbody id="secrets-tbody"><tr><td colspan="4" style="color:var(--text3);text-align:center">Click LIST to load</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAMBDA TAB -->
+    <div class="tab-panel" id="tab-lambda">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">λ Invoke Lambda</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Function Name or ARN</label><input type="text" id="lambda-fn-name" placeholder="my-function"></div>
+            <div class="form-group"><label>Payload (JSON)</label><textarea id="lambda-payload" rows="5" placeholder='{"key": "value"}'></textarea></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.lambda.invoke()">▶ INVOKE</button>
+            <div class="output-area" id="lambda-invoke-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">📋 Lambda Functions</div>
+            <button class="btn btn-secondary" onclick="Portal.lambda.list()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Function Name</th><th>Runtime</th><th>Memory</th><th>Timeout</th><th>Last Modified</th></tr></thead>
+              <tbody id="lambda-tbody"><tr><td colspan="5" style="color:var(--text3);text-align:center">Click LIST to load</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROUTE53 TAB -->
+    <div class="tab-panel" id="tab-route53">
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">🌍 DNS Record Manager</div></div>
+          <div class="panel-body">
+            <div class="form-group"><label>Hosted Zone ID</label><input type="text" id="r53-zone-id" placeholder="Z1234567890ABC"></div>
+            <div class="form-group"><label>Record Name</label><input type="text" id="r53-record-name" placeholder="api.example.com"></div>
+            <div class="form-group"><label>Record Type</label>
+              <select id="r53-record-type">
+                <option value="A">A (IPv4)</option>
+                <option value="CNAME">CNAME</option>
+                <option value="MX">MX</option>
+                <option value="TXT">TXT</option>
+                <option value="AAAA">AAAA (IPv6)</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Value</label><input type="text" id="r53-record-value" placeholder="54.123.45.67"></div>
+            <div class="form-group"><label>TTL (seconds)</label><input type="number" id="r53-ttl" value="300"></div>
+            <button class="btn btn-primary btn-full" onclick="Portal.dns.upsert()">UPSERT RECORD</button>
+            <div class="output-area" id="r53-output"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Hosted Zones</div>
+            <button class="btn btn-secondary" onclick="Portal.dns.listZones()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table><thead><tr><th>Zone Name</th><th>Zone ID</th><th>Private</th><th>Records</th></tr></thead>
+              <tbody id="r53-zones-tbody"><tr><td colspan="4" style="color:var(--text3);text-align:center">Click LIST to load</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMPLATES TAB -->
+    <div class="tab-panel" id="tab-templates">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📦 Template Marketplace</div>
+          <input type="text" id="tpl-search" placeholder="Search templates..." style="width:200px;padding:4px 10px;font-size:11px" oninput="Portal.templates.search(this.value)">
+        </div>
+        <div class="panel-body">
+          <div id="templates-grid" class="grid-3">
+            <!-- populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Template Deploy Modal -->
+      <div class="panel" id="tpl-deploy-panel" style="display:none">
+        <div class="panel-header">
+          <div class="panel-title" id="tpl-deploy-title">Deploy Template</div>
+          <button class="btn btn-secondary" onclick="document.getElementById('tpl-deploy-panel').style.display='none'" style="padding:4px 10px;font-size:10px;">✕ CLOSE</button>
+        </div>
+        <div class="panel-body">
+          <div id="tpl-params-form"></div>
+          <button class="btn btn-primary" onclick="Portal.templates.deploy()" style="margin-top:12px">▶ DEPLOY TEMPLATE</button>
+          <div class="output-area" id="tpl-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CI/CD TAB -->
+    <div class="tab-panel" id="tab-cicd">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🔄 CI/CD Pipeline Generator</div></div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div>
+              <div class="form-group"><label>Pipeline Type</label>
+                <select id="cicd-type">
+                  <option value="github-actions">GitHub Actions</option>
+                </select>
+              </div>
+              <div class="form-group"><label>App Type</label>
+                <select id="cicd-app-type">
+                  <option value="node">Node.js</option>
+                  <option value="python">Python</option>
+                  <option value="java">Java</option>
+                  <option value="go">Go</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Deploy Target</label>
+                <select id="cicd-deploy-target" onchange="Portal.cicd.toggleFields()">
+                  <option value="ec2">EC2 (SSH Deploy)</option>
+                  <option value="eks">EKS (Docker + kubectl)</option>
+                  <option value="s3">S3 (Static Site)</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Repository / App Name</label><input type="text" id="cicd-repo" placeholder="my-app"></div>
+            </div>
+            <div>
+              <div class="form-group"><label>AWS Region</label><input type="text" id="cicd-region" value="us-east-1"></div>
+              <div id="cicd-eks-fields">
+                <div class="form-group"><label>ECR Repository Name</label><input type="text" id="cicd-ecr" placeholder="my-app"></div>
+                <div class="form-group"><label>EKS Cluster Name</label><input type="text" id="cicd-eks-cluster" placeholder="my-cluster"></div>
+              </div>
+              <div id="cicd-s3-fields" style="display:none">
+                <div class="form-group"><label>S3 Bucket Name</label><input type="text" id="cicd-s3" placeholder="my-static-site"></div>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="Portal.cicd.generate()" style="margin-top:12px">GENERATE PIPELINE YAML</button>
+          <div class="output-area" id="cicd-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOGS TAB -->
+    <div class="tab-panel" id="tab-logs">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">📋 CloudWatch Logs</div></div>
+        <div class="panel-body">
+          <div class="form-row">
+            <div class="form-group" style="flex:2"><label>Log Group Name</label><input type="text" id="logs-group" placeholder="/aws/lambda/my-function"></div>
+            <div class="form-group" style="flex:1"><label>Filter Pattern</label><input type="text" id="logs-filter" placeholder="ERROR"></div>
+            <button class="btn btn-primary" onclick="Portal.cwlogs.filter()">FILTER LOGS</button>
+          </div>
+          <div class="output-area" id="logs-output"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Log Groups</div>
+          <button class="btn btn-secondary" onclick="Portal.cwlogs.listGroups()" style="padding:4px 10px;font-size:10px;">↻ LIST</button>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table><thead><tr><th>Log Group</th><th>Size (bytes)</th><th>Retention (days)</th></tr></thead>
+            <tbody id="log-groups-tbody"><tr><td colspan="3" style="color:var(--text3);text-align:center">Click LIST to load</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COST TAB -->
+    <div class="tab-panel" id="tab-cost">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">💰 Cost Explorer (Last 30 Days)</div>
+          <button class="btn btn-primary" onclick="Portal.cost.load()" style="padding:6px 14px;font-size:11px;">↻ LOAD COSTS</button>
+        </div>
+        <div class="panel-body">
+          <div id="cost-total" style="font-size:24px;color:var(--yellow);margin-bottom:16px;display:none"></div>
+          <div class="table-wrap">
+            <table><thead><tr><th>AWS Service</th><th>Cost (USD)</th><th>% of Total</th></tr></thead>
+            <tbody id="cost-tbody"><tr><td colspan="3" style="color:var(--text3);text-align:center">Click LOAD COSTS to fetch billing data</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUDIT TAB -->
+    <div class="tab-panel" id="tab-audit">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🕵 Audit Trail</div>
+          <button class="btn btn-secondary" onclick="Portal.audit.load()" style="padding:4px 10px;font-size:10px;">↻ REFRESH</button>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Resource</th><th>Status</th></tr></thead>
+            <tbody id="audit-tbody"><tr><td colspan="5" style="color:var(--text3);text-align:center">Click REFRESH to load audit logs</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end #content -->
+
+  <!-- Log Console -->
+  <div id="log-console">
+    <div class="log-header" onclick="Portal.toggleConsole()">
+      <div class="log-dot" id="log-activity-dot"></div>
+      <div class="log-header-title">OUTPUT CONSOLE</div>
+      <span style="font-size:10px;color:var(--text3)" id="log-toggle-text">▼ COLLAPSE</span>
+      <button class="btn btn-secondary" onclick="event.stopPropagation();Portal.clearConsole()" style="padding:2px 8px;font-size:10px">CLEAR</button>
+    </div>
+    <div id="log-output"></div>
+  </div>
+
+</div><!-- end #app -->
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
