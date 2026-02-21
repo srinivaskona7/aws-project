@@ -6,4 +6,3 @@ uploads/
 .gitignore
 .claude
 *.md
-*.sh

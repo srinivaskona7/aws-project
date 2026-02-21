@@ -1,7 +1,13 @@
-FROM node:18-alpine
+FROM node:18-slim
 
-# Install build tools for better-sqlite3 and ssh client for tests
-RUN apk add --no-cache python3 make g++ openssh-client curl
+# Install build tools and ssh client
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    openssh-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
@@ -9,7 +15,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies (Debian glibc uses prebuilt sqlite3 binaries)
 RUN npm install
 
 # Copy application code
