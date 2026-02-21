@@ -97,6 +97,7 @@ const terminal = require('./routes/terminal');
 const advanced = require('./routes/advanced');
 const newServices = require('./routes/new-services');
 const moreServices = require('./routes/more-services');
+const ec2Packages = require('./routes/ec2-packages');
 
 app.use('/api', requireAuth, awsCore);
 app.use('/api', requireAuth, infrastructure);
@@ -106,6 +107,7 @@ app.use('/api', requireAuth, terminal);
 app.use('/api', requireAuth, advanced);
 app.use('/api', requireAuth, newServices);
 app.use('/api', requireAuth, moreServices);
+app.use('/api', requireAuth, ec2Packages);
 
 // SSH terminal WebSocket (separate path)
 const terminalHandler = require('./routes/terminal-ws');

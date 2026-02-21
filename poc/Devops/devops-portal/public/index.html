@@ -670,6 +670,25 @@ pre {
 .term-dot.red { background: #ff5f57; }
 .term-dot.yellow { background: #ffbd2e; }
 .term-dot.green { background: #28c840; }
+
+/* Package cards */
+.pkg-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pkg-card:hover { border-color: var(--border2); box-shadow: var(--glow); }
+.pkg-card.selected { border-color: var(--green); background: rgba(0,255,136,0.05); }
+.pkg-icon { font-size: 20px; }
+.pkg-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.pkg-desc { font-size: 10px; color: var(--text3); line-height: 1.4; flex: 1; }
+.pkg-btn { margin-top: 8px; font-size: 10px; padding: 5px 8px; }
+.pkg-card.selected .pkg-btn { background: var(--green); color: var(--bg); border-color: var(--green); }
 </style>
 </head>
 <body>
@@ -739,6 +758,7 @@ pre {
       <div class="nav-tab" data-tab="eks">☸ EKS</div>
       <div class="nav-tab" data-tab="asg">⚖ ASG</div>
       <div class="nav-tab" data-tab="terminal">💻 Shell</div>
+      <div class="nav-tab" data-tab="ec2pkg">📦 EC2 Pkgs</div>
       <div class="nav-tab" data-tab="nginx">🌐 Nginx</div>
       <div class="nav-tab" data-tab="docker">🐳 Docker</div>
       <div class="nav-tab" data-tab="k8s">⚓ K8s</div>
@@ -1090,6 +1110,239 @@ pre {
         </div>
       </div>
     </div>
+
+    <!-- EC2 PACKAGE MANAGER TAB -->
+    <div class="tab-panel" id="tab-ec2pkg">
+
+      <!-- SSH Connection Row (reuses terminal connection info) -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🖥 EC2 Package Manager — SSH Target</div>
+          <button class="btn btn-secondary" onclick="Portal.ec2pkg.checkInstalled()" style="padding:6px 14px;font-size:11px">🔍 CHECK INSTALLED</button>
+        </div>
+        <div class="panel-body">
+          <div class="grid-2" style="align-items:end">
+            <div>
+              <div class="form-group"><label>EC2 Hostname / IP</label><input type="text" id="pkg-ssh-host" placeholder="54.123.45.67"></div>
+              <div class="form-group"><label>Username</label><input type="text" id="pkg-ssh-user" value="ec2-user"></div>
+              <div class="form-group"><label>Port</label><input type="number" id="pkg-ssh-port" value="22"></div>
+            </div>
+            <div>
+              <div class="form-group"><label>Auth Method</label>
+                <select id="pkg-auth-method" onchange="Portal.ec2pkg.toggleAuth()">
+                  <option value="key">PEM Key</option>
+                  <option value="password">Password</option>
+                </select>
+              </div>
+              <div id="pkg-key-group">
+                <div class="form-group"><label>PEM Private Key</label><textarea id="pkg-ssh-key" rows="4" placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;...paste PEM key...&#10;-----END RSA PRIVATE KEY-----"></textarea></div>
+              </div>
+              <div id="pkg-pass-group" style="display:none">
+                <div class="form-group"><label>Password</label><input type="password" id="pkg-ssh-pass" placeholder="SSH password"></div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-secondary" onclick="Portal.ec2pkg.syncFromTerminal()">↓ USE SHELL TAB CREDS</button>
+            <div id="pkg-selected-badges" style="display:flex;gap:6px;flex-wrap:wrap;flex:1"></div>
+            <button class="btn btn-danger" onclick="Portal.ec2pkg.clearSelected()" id="pkg-clear-btn" style="display:none">✕ CLEAR SELECTION</button>
+            <button class="btn btn-primary" onclick="Portal.ec2pkg.installSelected()" id="pkg-install-selected-btn" style="display:none">▶ INSTALL SELECTED</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Output Console -->
+      <div class="panel" id="pkg-output-panel" style="display:none">
+        <div class="panel-header">
+          <div class="panel-title">📋 Installation Output</div>
+          <button class="btn btn-secondary" onclick="document.getElementById('pkg-output-panel').style.display='none'" style="padding:4px 10px;font-size:10px">✕ CLOSE</button>
+        </div>
+        <div class="panel-body" style="padding:0">
+          <div id="pkg-output" style="background:var(--bg);padding:12px;font-family:var(--font-mono);font-size:11px;line-height:1.7;max-height:400px;overflow-y:auto;white-space:pre-wrap;color:var(--text)"></div>
+        </div>
+      </div>
+
+      <!-- ── BUNDLE: FULL STACK ─────────────────────────────── -->
+      <div class="panel" style="border-color:var(--green);box-shadow:0 0 20px rgba(0,255,136,0.1)">
+        <div class="panel-header" style="background:rgba(0,255,136,0.05)">
+          <div class="panel-title" style="font-size:13px">⚡ ONE-CLICK BUNDLES</div>
+        </div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div class="resource-card" style="border-color:var(--green);cursor:pointer" onclick="Portal.ec2pkg.install('devops-full-stack')">
+              <div style="font-size:20px;margin-bottom:8px">🚀</div>
+              <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:6px">Full DevOps Stack</div>
+              <div style="font-size:11px;color:var(--text3);line-height:1.5">Node.js · Docker · kubectl · Helm · eksctl · Terraform · AWS CLI · Ansible · Nginx · Git</div>
+              <button class="btn btn-primary btn-full" style="margin-top:12px" onclick="event.stopPropagation();Portal.ec2pkg.install('devops-full-stack')">INSTALL ALL</button>
+            </div>
+            <div class="resource-card" style="border-color:var(--blue);cursor:pointer" onclick="Portal.ec2pkg.install('kubernetes-apps')">
+              <div style="font-size:20px;margin-bottom:8px">☸</div>
+              <div style="font-size:14px;font-weight:700;color:var(--blue);margin-bottom:6px">CNCF Apps on K8s</div>
+              <div style="font-size:11px;color:var(--text3);line-height:1.5">Nginx Ingress · Cert-Manager · Prometheus · Grafana · Argo CD via Helm</div>
+              <button class="btn btn-secondary btn-full" style="margin-top:12px;border-color:var(--blue);color:var(--blue)" onclick="event.stopPropagation();Portal.ec2pkg.install('kubernetes-apps')">DEPLOY ON CLUSTER</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CORE TOOLS ─────────────────────────────────────── -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🔧 Core Tools</div>
+          <button class="btn btn-secondary" onclick="Portal.ec2pkg.selectCategory('core')" style="padding:4px 10px;font-size:10px">SELECT ALL</button>
+        </div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <div class="pkg-card" data-pkg="system-update"><div class="pkg-icon">🔄</div><div class="pkg-name">System Update</div><div class="pkg-desc">yum/apt update + essentials</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('system-update')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="git"><div class="pkg-icon">🗃</div><div class="pkg-name">Git</div><div class="pkg-desc">Source control</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('git')">INSTALL</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── RUNTIMES ───────────────────────────────────────── -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">⚡ Runtimes</div>
+          <button class="btn btn-secondary" onclick="Portal.ec2pkg.selectCategory('runtime')" style="padding:4px 10px;font-size:10px">SELECT ALL</button>
+        </div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <div class="pkg-card" data-pkg="nodejs"><div class="pkg-icon">🟢</div><div class="pkg-name">Node.js 20 LTS</div><div class="pkg-desc">+ npm, pm2, yarn</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('nodejs')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="python3"><div class="pkg-icon">🐍</div><div class="pkg-name">Python 3</div><div class="pkg-desc">+ pip, venv, ansible, boto3</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('python3')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="java"><div class="pkg-icon">☕</div><div class="pkg-name">Java 17 (JDK)</div><div class="pkg-desc">OpenJDK / Corretto</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('java')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="golang"><div class="pkg-icon">🔵</div><div class="pkg-name">Go 1.22</div><div class="pkg-desc">Golang runtime</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('golang')">INSTALL</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CONTAINERS ─────────────────────────────────────── -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🐳 Containers & Orchestration</div>
+          <button class="btn btn-secondary" onclick="Portal.ec2pkg.selectCategory('containers')" style="padding:4px 10px;font-size:10px">SELECT ALL</button>
+        </div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <div class="pkg-card" data-pkg="docker"><div class="pkg-icon">🐳</div><div class="pkg-name">Docker + Compose</div><div class="pkg-desc">Container runtime</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('docker')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="kubectl"><div class="pkg-icon">☸</div><div class="pkg-name">kubectl</div><div class="pkg-desc">+ kubectx, kubens</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('kubectl')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="helm"><div class="pkg-icon">⛵</div><div class="pkg-name">Helm 3</div><div class="pkg-desc">+ bitnami, nginx, argo repos</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('helm')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="eksctl"><div class="pkg-icon">🌀</div><div class="pkg-name">eksctl</div><div class="pkg-desc">AWS EKS CLI</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('eksctl')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="k9s"><div class="pkg-icon">🐕</div><div class="pkg-name">k9s</div><div class="pkg-desc">Kubernetes TUI dashboard</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('k9s')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="containerd"><div class="pkg-icon">📦</div><div class="pkg-name">containerd + nerdctl</div><div class="pkg-desc">OCI-native runtime</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('containerd')">INSTALL</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── IaC ────────────────────────────────────────────── -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🏗 Infrastructure as Code</div>
+          <button class="btn btn-secondary" onclick="Portal.ec2pkg.selectCategory('iac')" style="padding:4px 10px;font-size:10px">SELECT ALL</button>
+        </div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <div class="pkg-card" data-pkg="terraform"><div class="pkg-icon">🟣</div><div class="pkg-name">Terraform</div><div class="pkg-desc">HashiCorp IaC</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('terraform')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="ansible"><div class="pkg-icon">🔴</div><div class="pkg-name">Ansible</div><div class="pkg-desc">+ aws, docker collections</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('ansible')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="pulumi"><div class="pkg-icon">🟠</div><div class="pkg-name">Pulumi</div><div class="pkg-desc">Modern IaC</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('pulumi')">INSTALL</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CI/CD ───────────────────────────────────────────── -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🔄 CI/CD Tools</div>
+          <button class="btn btn-secondary" onclick="Portal.ec2pkg.selectCategory('cicd')" style="padding:4px 10px;font-size:10px">SELECT ALL</button>
+        </div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <div class="pkg-card" data-pkg="jenkins"><div class="pkg-icon">🤵</div><div class="pkg-name">Jenkins LTS</div><div class="pkg-desc">CI/CD server on :8080</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('jenkins')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="gitlab-runner"><div class="pkg-icon">🦊</div><div class="pkg-name">GitLab Runner</div><div class="pkg-desc">GitLab CI agent</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('gitlab-runner')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="argocd-cli"><div class="pkg-icon">🐙</div><div class="pkg-name">Argo CD CLI</div><div class="pkg-desc">GitOps CD tool</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('argocd-cli')">INSTALL</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CLOUD ──────────────────────────────────────────── -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">☁ Cloud CLIs</div>
+          <button class="btn btn-secondary" onclick="Portal.ec2pkg.selectCategory('cloud')" style="padding:4px 10px;font-size:10px">SELECT ALL</button>
+        </div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <div class="pkg-card" data-pkg="awscli"><div class="pkg-icon">🟡</div><div class="pkg-name">AWS CLI v2</div><div class="pkg-desc">Amazon Web Services</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('awscli')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="azure-cli"><div class="pkg-icon">🔷</div><div class="pkg-name">Azure CLI</div><div class="pkg-desc">Microsoft Azure</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('azure-cli')">INSTALL</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── OBSERVABILITY ──────────────────────────────────── -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">📊 Observability</div>
+          <button class="btn btn-secondary" onclick="Portal.ec2pkg.selectCategory('observability')" style="padding:4px 10px;font-size:10px">SELECT ALL</button>
+        </div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <div class="pkg-card" data-pkg="prometheus-node-exporter"><div class="pkg-icon">📈</div><div class="pkg-name">Prometheus Node Exporter</div><div class="pkg-desc">Metrics on :9100</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('prometheus-node-exporter')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="datadog-agent"><div class="pkg-icon">🐶</div><div class="pkg-name">Datadog Agent</div><div class="pkg-desc">Full-stack observability</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('datadog-agent')">INSTALL</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECURITY ───────────────────────────────────────── -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🛡 Security</div>
+          <button class="btn btn-secondary" onclick="Portal.ec2pkg.selectCategory('security')" style="padding:4px 10px;font-size:10px">SELECT ALL</button>
+        </div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <div class="pkg-card" data-pkg="fail2ban"><div class="pkg-icon">🔒</div><div class="pkg-name">Fail2ban</div><div class="pkg-desc">Brute-force protection</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('fail2ban')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="certbot"><div class="pkg-icon">🔐</div><div class="pkg-name">Certbot</div><div class="pkg-desc">Let's Encrypt SSL</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('certbot')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="trivy"><div class="pkg-icon">🔎</div><div class="pkg-name">Trivy</div><div class="pkg-desc">Container vuln scanner</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('trivy')">INSTALL</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── WEB SERVERS ────────────────────────────────────── -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🌐 Web Servers</div></div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <div class="pkg-card" data-pkg="nginx"><div class="pkg-icon">🟩</div><div class="pkg-name">Nginx</div><div class="pkg-desc">High-perf web server</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('nginx')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="caddy"><div class="pkg-icon">🦡</div><div class="pkg-name">Caddy</div><div class="pkg-desc">Auto HTTPS web server</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('caddy')">INSTALL</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── DATABASES ──────────────────────────────────────── -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">🗄 Databases</div>
+          <button class="btn btn-secondary" onclick="Portal.ec2pkg.selectCategory('database')" style="padding:4px 10px;font-size:10px">SELECT ALL</button>
+        </div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <div class="pkg-card" data-pkg="mysql"><div class="pkg-icon">🐬</div><div class="pkg-name">MySQL 8</div><div class="pkg-desc">Relational DB</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('mysql')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="postgresql"><div class="pkg-icon">🐘</div><div class="pkg-name">PostgreSQL 16</div><div class="pkg-desc">Advanced relational DB</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('postgresql')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="redis"><div class="pkg-icon">🔴</div><div class="pkg-name">Redis</div><div class="pkg-desc">In-memory cache/queue</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('redis')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="mongodb"><div class="pkg-icon">🍃</div><div class="pkg-name">MongoDB 7</div><div class="pkg-desc">NoSQL document DB</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('mongodb')">INSTALL</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CNCF ───────────────────────────────────────────── -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">☁ CNCF Ecosystem</div>
+          <button class="btn btn-secondary" onclick="Portal.ec2pkg.selectCategory('cncf')" style="padding:4px 10px;font-size:10px">SELECT ALL</button>
+        </div>
+        <div class="panel-body">
+          <div class="grid-4">
+            <div class="pkg-card" data-pkg="istio"><div class="pkg-icon">🕸</div><div class="pkg-name">Istio CLI</div><div class="pkg-desc">Service mesh</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('istio')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="fluxcd"><div class="pkg-icon">🌊</div><div class="pkg-name">Flux CD</div><div class="pkg-desc">GitOps operator</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('fluxcd')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="tekton-cli"><div class="pkg-icon">⚙</div><div class="pkg-name">Tekton CLI</div><div class="pkg-desc">K8s-native CI/CD</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('tekton-cli')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="crossplane"><div class="pkg-icon">🔗</div><div class="pkg-name">Crossplane</div><div class="pkg-desc">K8s cloud control plane</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('crossplane')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="velero"><div class="pkg-icon">💾</div><div class="pkg-name">Velero</div><div class="pkg-desc">K8s backup & restore</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('velero')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="kustomize"><div class="pkg-icon">🎛</div><div class="pkg-name">Kustomize</div><div class="pkg-desc">K8s config management</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('kustomize')">INSTALL</button></div>
+            <div class="pkg-card" data-pkg="open-policy-agent"><div class="pkg-icon">⚖</div><div class="pkg-name">OPA</div><div class="pkg-desc">Policy as code</div><button class="btn btn-secondary btn-full pkg-btn" onclick="Portal.ec2pkg.install('open-policy-agent')">INSTALL</button></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end tab-ec2pkg -->
 
     <!-- NGINX TAB -->
     <div class="tab-panel" id="tab-nginx">

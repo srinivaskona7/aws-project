@@ -1431,6 +1431,251 @@ const Portal = (() => {
     }
   };
 
+  // ===== EC2 PACKAGE MANAGER =====
+  const ec2pkg = {
+    selected: new Set(),
+
+    toggleAuth() {
+      const method = document.getElementById('pkg-auth-method').value;
+      document.getElementById('pkg-key-group').style.display = method === 'key' ? 'block' : 'none';
+      document.getElementById('pkg-pass-group').style.display = method === 'password' ? 'block' : 'none';
+    },
+
+    // Copy connection info from the main Shell tab
+    syncFromTerminal() {
+      const host = document.getElementById('ssh-host')?.value;
+      const user = document.getElementById('ssh-user')?.value;
+      const port = document.getElementById('ssh-port')?.value;
+      const key = document.getElementById('ssh-key')?.value;
+      const pass = document.getElementById('ssh-pass')?.value;
+      if (host) document.getElementById('pkg-ssh-host').value = host;
+      if (user) document.getElementById('pkg-ssh-user').value = user;
+      if (port) document.getElementById('pkg-ssh-port').value = port;
+      if (key) document.getElementById('pkg-ssh-key').value = key;
+      if (pass) document.getElementById('pkg-ssh-pass').value = pass;
+      toast('Credentials synced from Shell tab', 'success');
+    },
+
+    _getConn() {
+      const host = document.getElementById('pkg-ssh-host').value.trim();
+      const username = document.getElementById('pkg-ssh-user').value.trim();
+      const port = document.getElementById('pkg-ssh-port').value;
+      const method = document.getElementById('pkg-auth-method').value;
+      if (!host) { toast('EC2 hostname required', 'error'); return null; }
+      const conn = { host, username, port: parseInt(port) };
+      if (method === 'key') {
+        conn.privateKey = document.getElementById('pkg-ssh-key').value;
+        if (!conn.privateKey) { toast('PEM key required', 'error'); return null; }
+      } else {
+        conn.password = document.getElementById('pkg-ssh-pass').value;
+      }
+      return conn;
+    },
+
+    _showOutput(text, append = false) {
+      const panel = document.getElementById('pkg-output-panel');
+      const out = document.getElementById('pkg-output');
+      panel.style.display = 'block';
+      if (append) {
+        out.textContent += text + '\n';
+      } else {
+        out.textContent = text;
+      }
+      out.scrollTop = out.scrollHeight;
+    },
+
+    async install(packageId) {
+      const conn = this._getConn();
+      if (!conn) return;
+      this._showOutput(`[STARTING] Installing: ${packageId}\n`);
+      log(`[EC2PKG] Installing ${packageId} on ${conn.host}...`, 'cmd');
+      try {
+        const res = await api('POST', '/api/ec2-packages/install', { packageId, ...conn }, true);
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const payload = JSON.parse(line.slice(6));
+                if (payload.line) {
+                  this._showOutput(payload.line, true);
+                  const lt = payload.line.includes('[SUCCESS]') || payload.line.includes('[DONE]') ? 'success'
+                    : payload.line.includes('[ERROR]') ? 'error'
+                    : payload.line.includes('[WARN]') ? 'warn'
+                    : payload.line.startsWith('[JOB:') ? 'cmd' : 'info';
+                  log(payload.line, lt);
+                }
+                if (payload.done) {
+                  const msg = payload.exitCode === 0 ? `✓ ${packageId} installed!` : `✗ ${packageId} failed (exit ${payload.exitCode})`;
+                  this._showOutput(msg, true);
+                  toast(msg, payload.exitCode === 0 ? 'success' : 'error');
+                }
+              } catch(e) {}
+            }
+          }
+        }
+      } catch(err) {
+        this._showOutput(`Error: ${err.message}`);
+        toast(err.message, 'error');
+      }
+    },
+
+    async installSelected() {
+      if (this.selected.size === 0) { toast('No packages selected', 'error'); return; }
+      const conn = this._getConn();
+      if (!conn) return;
+      const packageIds = Array.from(this.selected);
+      this._showOutput(`[BATCH] Installing ${packageIds.length} packages: ${packageIds.join(', ')}\n`);
+      log(`[EC2PKG] Batch installing ${packageIds.length} packages on ${conn.host}...`, 'cmd');
+      try {
+        const res = await api('POST', '/api/ec2-packages/install-many', { packageIds, ...conn }, true);
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const payload = JSON.parse(line.slice(6));
+                if (payload.line) {
+                  this._showOutput(payload.line, true);
+                  log(payload.line, payload.line.includes('[SUCCESS]') || payload.line.includes('[DONE]') ? 'success' : payload.line.includes('[ERROR]') ? 'error' : 'info');
+                }
+                if (payload.done) {
+                  const msg = payload.exitCode === 0 ? `✓ Batch install complete!` : `✗ Batch install failed`;
+                  this._showOutput(msg, true);
+                  toast(msg, payload.exitCode === 0 ? 'success' : 'error');
+                }
+              } catch(e) {}
+            }
+          }
+        }
+      } catch(err) {
+        this._showOutput(`Error: ${err.message}`);
+        toast(err.message, 'error');
+      }
+    },
+
+    async checkInstalled() {
+      const conn = this._getConn();
+      if (!conn) return;
+      this._showOutput('[CHECKING] Scanning installed tools on remote EC2...\n');
+      log(`[EC2PKG] Checking installed tools on ${conn.host}...`, 'cmd');
+      try {
+        const res = await api('POST', '/api/ec2-packages/check', conn, true);
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const payload = JSON.parse(line.slice(6));
+                if (payload.line) {
+                  this._showOutput(payload.line, true);
+                  // Visually mark cards as installed
+                  if (payload.line.startsWith('✓ ')) {
+                    const toolName = payload.line.split('✓ ')[1].split(':')[0].trim();
+                    this._markInstalled(toolName);
+                  }
+                }
+                if (payload.done) toast('Check complete!', 'success');
+              } catch(e) {}
+            }
+          }
+        }
+      } catch(err) {
+        this._showOutput(`Error: ${err.message}`);
+        toast(err.message, 'error');
+      }
+    },
+
+    _markInstalled(toolName) {
+      // Map tool names to package IDs
+      const toolMap = {
+        'git': 'git', 'node': 'nodejs', 'docker': 'docker', 'kubectl': 'kubectl',
+        'helm': 'helm', 'terraform': 'terraform', 'ansible': 'ansible',
+        'aws': 'awscli', 'eksctl': 'eksctl', 'nginx': 'nginx', 'redis-server': 'redis',
+        'mongod': 'mongodb', 'psql': 'postgresql', 'mysql': 'mysql',
+        'jenkins': 'jenkins', 'argocd': 'argocd-cli', 'flux': 'fluxcd',
+        'k9s': 'k9s', 'istioctl': 'istio', 'velero': 'velero', 'trivy': 'trivy',
+        'certbot': 'certbot', 'kustomize': 'kustomize', 'opa': 'open-policy-agent', 'tkn': 'tekton-cli'
+      };
+      const pkgId = toolMap[toolName];
+      if (pkgId) {
+        const card = document.querySelector(`.pkg-card[data-pkg="${pkgId}"]`);
+        if (card) {
+          const btn = card.querySelector('.pkg-btn');
+          if (btn) { btn.textContent = '✓ INSTALLED'; btn.style.background = 'rgba(0,255,136,0.2)'; btn.style.color = 'var(--green)'; btn.style.cursor = 'default'; }
+        }
+      }
+    },
+
+    toggleSelect(pkgId) {
+      const card = document.querySelector(`.pkg-card[data-pkg="${pkgId}"]`);
+      if (this.selected.has(pkgId)) {
+        this.selected.delete(pkgId);
+        card?.classList.remove('selected');
+      } else {
+        this.selected.add(pkgId);
+        card?.classList.add('selected');
+      }
+      this._updateSelectedUI();
+    },
+
+    selectCategory(category) {
+      document.querySelectorAll(`.pkg-card`).forEach(card => {
+        const pkgId = card.dataset.pkg;
+        if (!pkgId) return;
+        // Find which category this pkg belongs to by checking if it's in the same panel
+        const panel = card.closest('.panel');
+        const panelTitle = panel?.querySelector('.panel-title')?.textContent?.toLowerCase() || '';
+        const catMap = { core: 'core tools', runtime: 'runtimes', containers: 'containers', iac: 'infrastructure as code', cicd: 'ci/cd', cloud: 'cloud', observability: 'observability', security: 'security', database: 'databases', cncf: 'cncf' };
+        const expectedTitle = catMap[category] || '';
+        if (panelTitle.includes(expectedTitle.split(' ')[0].toLowerCase())) {
+          this.selected.add(pkgId);
+          card.classList.add('selected');
+        }
+      });
+      this._updateSelectedUI();
+      toast(`Category "${category}" selected`, 'info');
+    },
+
+    clearSelected() {
+      this.selected.clear();
+      document.querySelectorAll('.pkg-card.selected').forEach(c => c.classList.remove('selected'));
+      this._updateSelectedUI();
+    },
+
+    _updateSelectedUI() {
+      const badgesEl = document.getElementById('pkg-selected-badges');
+      const clearBtn = document.getElementById('pkg-clear-btn');
+      const installBtn = document.getElementById('pkg-install-selected-btn');
+      if (!badgesEl) return;
+      badgesEl.innerHTML = Array.from(this.selected).map(id => `<span class="badge badge-green" style="cursor:pointer" onclick="Portal.ec2pkg.toggleSelect('${escHtml(id)}')">${escHtml(id)} ✕</span>`).join('');
+      const hasSelected = this.selected.size > 0;
+      if (clearBtn) clearBtn.style.display = hasSelected ? 'inline-flex' : 'none';
+      if (installBtn) { installBtn.style.display = hasSelected ? 'inline-flex' : 'none'; installBtn.textContent = `▶ INSTALL ${this.selected.size} PACKAGES`; }
+    }
+  };
+
   // ===== INIT (runs after all modules are declared) =====
   function init() {
     document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -1460,5 +1705,5 @@ const Portal = (() => {
     init();
   }
 
-  return { logout, loadResources, clearCreds, switchTab, toggleConsole, clearConsole, ec2, eks, asg, terminal, nginx, docker, k8s, helm, s3, iam, secrets, lambda, dns, templates, cicd, cwlogs, cost, audit, cfn, codebuild, pipeline, cache, dynamo, sqs, cdn, beanstalk, ssm, alarms, ecs, stepfn, events, kinesis, waf, backup, awsconfig, apigw, opensearch, glue };
+  return { logout, loadResources, clearCreds, switchTab, toggleConsole, clearConsole, ec2, eks, asg, terminal, nginx, docker, k8s, helm, s3, iam, secrets, lambda, dns, templates, cicd, cwlogs, cost, audit, cfn, codebuild, pipeline, cache, dynamo, sqs, cdn, beanstalk, ssm, alarms, ecs, stepfn, events, kinesis, waf, backup, awsconfig, apigw, opensearch, glue, ec2pkg };
 })();
