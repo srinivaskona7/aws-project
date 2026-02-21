@@ -1,0 +1,9 @@
+node_modules
+data/
+logs/
+uploads/
+.git
+.gitignore
+.claude
+*.md
+*.sh

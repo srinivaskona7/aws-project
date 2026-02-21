@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: ec2-password-setup-ui
+    env: docker
+    plan: free
+    dockerCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 3000
+    disk:
+      name: data
+      mountPath: /app/data
+      sizeGB: 1
