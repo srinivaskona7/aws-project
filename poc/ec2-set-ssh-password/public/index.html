@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✻ EC2 OPS // Root Access Console</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✻</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Comic+Neue:wght@300;400;700&family=Dancing+Script:wght@400;500;600;700&family=Handlee&family=Indie+Flower&family=JetBrains+Mono:wght@300;400;500;600;700&family=Kalam:wght@300;400;700&family=Nunito:wght@300;400;500;600;700&family=Patrick+Hand&family=Quicksand:wght@300;400;500;600;700&family=Sacramento&family=Shadows+Into+Light&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="scanlines"></div>
+
+    <div class="shell">
+        <!-- ─── HEADER BAR ─── -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <span class="logo-glyph">✻</span>
+                <h1>EC2 <span class="accent">ROOT ACCESS</span></h1>
+                <span class="version-tag">v2.0</span>
+            </div>
+            <div class="topbar-right">
+                <!-- Font family dropdown -->
+                <div class="font-family-controls">
+                    <select id="fontFamily" onchange="changeFont(this.value)" title="Font family">
+                        <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+                        <option value="'Comic Neue', cursive">Comic Neue</option>
+                        <option value="'Patrick Hand', cursive">Patrick Hand</option>
+                        <option value="'Handlee', cursive">Handlee</option>
+                        <option value="'Virgil', cursive">Virgil</option>
+                        <option value="'Caveat', cursive">Caveat</option>
+                        <option value="'Dancing Script', cursive">Dancing Script</option>
+                        <option value="'Kalam', cursive">Kalam</option>
+                        <option value="'Indie Flower', cursive">Indie Flower</option>
+                        <option value="'Shadows Into Light', cursive">Shadows Into Light</option>
+                        <option value="'Quicksand', sans-serif">Quicksand</option>
+                        <option value="'Nunito', sans-serif">Nunito</option>
+                        <option value="'Sacramento', cursive">Sacramento</option>
+                    </select>
+                </div>
+                <span class="divider-v"></span>
+                <!-- Font size controls -->
+                <div class="font-controls">
+                    <button class="tool-btn" onclick="changeFontSize(-1)" title="Decrease font size">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                    <span class="font-size-label" id="fontSizeLabel">16</span>
+                    <button class="tool-btn" onclick="changeFontSize(1)" title="Increase font size">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                </div>
+                <span class="divider-v"></span>
+                <!-- Theme switcher -->
+                <div class="theme-switcher">
+                    <button class="theme-btn" data-theme="phosphor" title="Phosphor (Green)"><span class="swatch" style="background:#22d47e"></span></button>
+                    <button class="theme-btn" data-theme="amber" title="Amber (Retro)"><span class="swatch" style="background:#e8a735"></span></button>
+                    <button class="theme-btn" data-theme="frost" title="Frost (Blue)"><span class="swatch" style="background:#4ea4f6"></span></button>
+                    <button class="theme-btn" data-theme="crimson" title="Crimson (Red)"><span class="swatch" style="background:#e54545"></span></button>
+                    <button class="theme-btn active" data-theme="daylight" title="Daylight (Light)"><span class="swatch swatch-light" style="background:#f0f0f0;border:1px solid #ccc"></span></button>
+                </div>
+                <span class="divider-v"></span>
+                <!-- Fullscreen toggle -->
+                <button class="tool-btn" onclick="toggleFullscreen()" id="fullscreenBtn" title="Toggle fullscreen">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                </button>
+                <span class="divider-v"></span>
+                <div class="header-resources" id="headerResources" style="display:none">
+                    <span class="header-stat" id="headerStatCpu" title="CPU Usage">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/></svg>
+                        <span id="headerCpu">--%</span>
+                    </span>
+                    <span class="header-stat" id="headerStatMem" title="Memory Usage">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="10" y1="10" x2="10" y2="14"/><line x1="14" y1="10" x2="14" y2="14"/></svg>
+                        <span id="headerMem">--%</span>
+                    </span>
+                    <span class="header-stat" id="headerStatDisk" title="Disk Usage">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                        <span id="headerDisk">--%</span>
+                    </span>
+                </div>
+                <span class="divider-v"></span>
+                <button class="tool-btn" onclick="openNotificationSettings()" title="Alert settings">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                </button>
+                <span class="divider-v"></span>
+                <span class="clock" id="clock">00:00:00</span>
+                <span class="divider-v"></span>
+                <span class="status-pill" id="statusPill">
+                    <span class="dot" id="connectionStatus"></span>
+                    <span id="statusText">OFFLINE</span>
+                </span>
+                <span class="divider-v"></span>
+                <button class="tool-btn" onclick="logout()" id="logoutBtn" title="Logout">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- ─── CONTROLS BAR ─── -->
+        <form id="setupForm" class="controls" autocomplete="off">
+            <!-- Mode selector -->
+            <div class="field-group field-mode">
+                <label for="opMode">MODE</label>
+                <select id="opMode">
+                    <option value="ssh-login">SSH Login (PEM Key)</option>
+                    <option value="set-root-password">Set Root Password</option>
+                    <option value="root-login">Root Login (Password)</option>
+                </select>
+            </div>
+
+            <span class="divider-v" data-modes="ssh-login set-root-password root-login"></span>
+
+            <!-- HOST — all modes -->
+            <div class="field-group field-host" data-modes="ssh-login set-root-password root-login">
+                <label for="ec2Host">
+                    HOST
+                    <button type="button" class="history-toggle" id="historyToggle" onclick="toggleSessionHistory()" title="Recent sessions">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </button>
+                </label>
+                <input type="text" id="ec2Host" placeholder="54.xxx.xxx.xxx" spellcheck="false">
+                <div class="session-history-dropdown" id="sessionHistoryDropdown">
+                    <div class="session-history-header">
+                        <span>SAVED SESSIONS</span>
+                        <button type="button" class="tool-btn session-clear-btn" onclick="clearSessionHistory()" title="Clear history">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </div>
+                    <div class="session-history-list" id="sessionHistoryList">
+                        <div class="session-empty">No recent sessions</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- USER — ssh-login, set-root-password -->
+            <div class="field-group field-user" data-modes="ssh-login set-root-password">
+                <label for="username">USER</label>
+                <select id="username">
+                    <option value="ec2-user">ec2-user</option>
+                    <option value="ubuntu">ubuntu</option>
+                    <option value="admin">admin</option>
+                    <option value="centos">centos</option>
+                    <option value="root">root</option>
+                </select>
+            </div>
+
+            <!-- PASSWORD — set-root-password, root-login -->
+            <div class="field-group field-pass field-hidden" data-modes="set-root-password root-login">
+                <label for="password" id="passwordLabel">ROOT PASSWORD</label>
+                <input type="password" id="password" placeholder="set root password" autocomplete="new-password">
+            </div>
+
+            <!-- PEM KEY — ssh-login, set-root-password -->
+            <div class="field-group field-pem" data-modes="ssh-login set-root-password">
+                <input type="file" id="pemKey" accept=".pem,.key" hidden>
+                <button type="button" class="btn btn-pem" id="pemBtn" onclick="document.getElementById('pemKey').click()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    <span id="pemLabel">PEM KEY</span>
+                </button>
+            </div>
+
+            <span class="divider-v" data-modes="ssh-login set-root-password root-login"></span>
+
+            <!-- SAVE SESSION — all modes -->
+            <div class="action-group action-save" data-modes="ssh-login set-root-password root-login">
+                <button type="button" class="btn btn-save" id="saveSessionBtn" onclick="saveCurrentSession()" title="Save current session">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    SAVE
+                </button>
+            </div>
+
+            <!-- DEPLOY — set-root-password only -->
+            <div class="action-group field-hidden" data-modes="set-root-password" id="actionDeploy">
+                <button type="submit" class="btn btn-exec" id="setupBtn">
+                    <span class="btn-flower" id="deployFlower">✻</span>
+                    DEPLOY
+                </button>
+            </div>
+
+            <!-- CONNECT — ssh-login, root-login -->
+            <div class="action-group" data-modes="ssh-login root-login" id="actionConnect">
+                <button type="button" class="btn btn-login" id="loginBtn">
+                    <span class="btn-flower" id="connectFlower">✻</span>
+                    CONNECT
+                </button>
+            </div>
+        </form>
+
+        <!-- ─── OUTPUT AREA ─── -->
+        <div class="output-area">
+            <!-- Tab bar -->
+            <div class="tab-bar">
+                <div class="tabs-left">
+                    <button class="tab active" data-tab="logs" id="tabLogs">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        LOGS
+                        <span class="log-count" id="logCount">0</span>
+                    </button>
+                    <button class="tab" data-tab="terminal" id="tabTerminal">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                        TERMINAL
+                        <span class="terminal-status" id="termStatus"></span>
+                    </button>
+                    <button class="tab" data-tab="resources" id="tabResources">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        RESOURCES
+                        <span class="resource-status" id="resourceStatus"></span>
+                    </button>
+                    <button class="tab" data-tab="files" id="tabFiles">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        FILES
+                        <span class="feature-status" id="filesStatus"></span>
+                    </button>
+                    <button class="tab" data-tab="processes" id="tabProcesses">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+                        PROCESSES
+                        <span class="feature-status" id="processStatus"></span>
+                    </button>
+                    <button class="tab" data-tab="services" id="tabServices">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        SERVICES
+                        <span class="feature-status" id="serviceStatus"></span>
+                    </button>
+                    <button class="tab" data-tab="audit" id="tabAudit">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        AUDIT
+                        <span class="log-count" id="auditCount">0</span>
+                    </button>
+                    <button class="tab" data-tab="network" id="tabNetwork">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                        NETWORK
+                        <span class="feature-status" id="networkStatus"></span>
+                    </button>
+                    <button class="tab" data-tab="users" id="tabUsers">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        USERS
+                        <span class="feature-status" id="userStatus"></span>
+                    </button>
+                    <button class="tab" data-tab="docker" id="tabDocker">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="10" width="20" height="10" rx="2"/><rect x="5" y="6" width="4" height="4"/><rect x="10" y="6" width="4" height="4"/><rect x="15" y="6" width="4" height="4"/><rect x="10" y="2" width="4" height="4"/></svg>
+                        DOCKER
+                        <span class="feature-status" id="dockerStatus"></span>
+                    </button>
+                    <button class="tab" data-tab="packages" id="tabPackages">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        PACKAGES
+                        <span class="feature-status" id="packageStatus"></span>
+                    </button>
+                    <button class="tab" data-tab="security" id="tabSecurity">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        SECURITY
+                        <span class="feature-status" id="securityStatus"></span>
+                    </button>
+                    <button class="tab" data-tab="batch" id="tabBatch">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                        BATCH
+                        <span class="feature-status" id="batchStatus"></span>
+                    </button>
+                </div>
+                <div class="tabs-right">
+                    <button class="tool-btn" onclick="toggleCloudInitViewer()" title="Cloud-Init Log">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                    </button>
+                    <button class="tool-btn" onclick="clearLogs()" title="Clear">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                    <button class="tool-btn" onclick="downloadLogs()" title="Download">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <button class="tool-btn" id="disconnectBtn" onclick="disconnectSSH()" title="Disconnect SSH" style="display:none">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Logs panel -->
+            <div class="panel-content active" id="panelLogs">
+                <div class="logs-scroll" id="logsContainer">
+                    <div class="log-line log-system">
+                        <span class="ts">SYS</span>
+                        <span class="flower-pointer">✻</span>
+                        <span class="msg">Awaiting deployment parameters...</span>
+                    </div>
+                </div>
+                <!-- Progress strip -->
+                <div class="progress-strip" id="progressStrip" style="display:none">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+
+            <!-- Terminal panel -->
+            <div class="panel-content" id="panelTerminal">
+                <div class="snippets-bar" id="snippetsBar" style="display:none"></div>
+                <div id="terminalContainer"></div>
+                <div class="terminal-placeholder" id="termPlaceholder">
+                    <div class="flower-icon idle">✻</div>
+                    <p>Click <strong>CONNECT</strong> to start a terminal session</p>
+                </div>
+            </div>
+
+            <!-- Resources panel -->
+            <div class="panel-content" id="panelResources">
+                <div class="resources-dashboard" id="resourcesDashboard">
+                    <div class="resources-placeholder" id="resourcesPlaceholder">
+                        <div class="flower-icon idle">✻</div>
+                        <p>Connect to a host to view system resources</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Files panel (SFTP) -->
+            <div class="panel-content" id="panelFiles">
+                <div class="sftp-dashboard" id="sftpDashboard">
+                    <div class="resources-placeholder" id="filesPlaceholder">
+                        <div class="flower-icon idle">✻</div>
+                        <p>Connect to a host to browse files</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processes panel -->
+            <div class="panel-content" id="panelProcesses">
+                <div class="process-dashboard" id="processDashboard">
+                    <div class="resources-placeholder" id="processPlaceholder">
+                        <div class="flower-icon idle">✻</div>
+                        <p>Connect to a host to view processes</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Services panel -->
+            <div class="panel-content" id="panelServices">
+                <div class="service-dashboard" id="serviceDashboard">
+                    <div class="resources-placeholder" id="servicesPlaceholder">
+                        <div class="flower-icon idle">✻</div>
+                        <p>Connect to a host to view services</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audit panel -->
+            <div class="panel-content" id="panelAudit">
+                <div class="audit-dashboard" id="auditDashboard">
+                    <div class="audit-toolbar">
+                        <div class="audit-filters">
+                            <select id="auditFilter" onchange="filterAuditLog()">
+                                <option value="">ALL ACTIONS</option>
+                                <option value="login">Login</option>
+                                <option value="logout">Logout</option>
+                                <option value="ssh_connect">SSH Connect</option>
+                                <option value="session_save">Session Save</option>
+                                <option value="process_kill">Process Kill</option>
+                                <option value="file_upload">File Upload</option>
+                                <option value="file_download">File Download</option>
+                                <option value="file_delete">File Delete</option>
+                            </select>
+                            <input type="text" id="auditSearch" placeholder="Search..." oninput="debounceAuditSearch()" spellcheck="false">
+                        </div>
+                        <div class="audit-actions">
+                            <button class="tool-btn" onclick="exportAuditLog()" title="Export CSV">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            </button>
+                            <button class="tool-btn" onclick="clearAuditLog()" title="Clear all">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="audit-list" id="auditList">
+                        <div class="session-empty">No audit entries</div>
+                    </div>
+                    <div class="audit-pagination" id="auditPagination"></div>
+                </div>
+            </div>
+
+            <!-- Network panel -->
+            <div class="panel-content" id="panelNetwork">
+                <div class="network-dashboard" id="networkDashboard">
+                    <div class="resources-placeholder" id="networkPlaceholder">
+                        <div class="flower-icon idle">✻</div>
+                        <p>Connect to a host to view network</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users panel -->
+            <div class="panel-content" id="panelUsers">
+                <div class="user-dashboard" id="userDashboard">
+                    <div class="resources-placeholder" id="usersPlaceholder">
+                        <div class="flower-icon idle">✻</div>
+                        <p>Connect to a host to manage users</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Docker panel -->
+            <div class="panel-content" id="panelDocker">
+                <div class="docker-dashboard" id="dockerDashboard">
+                    <div class="resources-placeholder" id="dockerPlaceholder">
+                        <div class="flower-icon idle">✻</div>
+                        <p>Connect to a host to manage Docker</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Packages panel -->
+            <div class="panel-content" id="panelPackages">
+                <div class="package-dashboard" id="packageDashboard">
+                    <div class="resources-placeholder" id="packagePlaceholder">
+                        <div class="flower-icon idle">✻</div>
+                        <p>Connect to a host to manage packages</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security panel -->
+            <div class="panel-content" id="panelSecurity">
+                <div class="security-dashboard" id="securityDashboard">
+                    <div class="resources-placeholder" id="securityPlaceholder">
+                        <div class="flower-icon idle">✻</div>
+                        <p>Connect to a host to view security status</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Batch panel -->
+            <div class="panel-content" id="panelBatch">
+                <div class="batch-dashboard" id="batchDashboard">
+                    <div class="batch-setup">
+                        <div class="batch-header">
+                            <span class="batch-title">MULTI-INSTANCE BATCH SETUP</span>
+                        </div>
+                        <div class="batch-form">
+                            <div class="batch-field">
+                                <label>HOSTS (one per line)</label>
+                                <textarea id="batchHosts" class="batch-hosts-input" placeholder="10.0.1.1&#10;10.0.1.2&#10;10.0.1.3" rows="6" spellcheck="false"></textarea>
+                            </div>
+                            <div class="batch-row">
+                                <div class="batch-field">
+                                    <label>USERNAME</label>
+                                    <input type="text" id="batchUsername" value="ec2-user" spellcheck="false">
+                                </div>
+                                <div class="batch-field">
+                                    <label>PASSWORD</label>
+                                    <input type="password" id="batchPassword" placeholder="Root password">
+                                </div>
+                            </div>
+                            <div class="batch-field">
+                                <label>OPERATION</label>
+                                <select id="batchOperation">
+                                    <option value="setup-password">Set Root Password</option>
+                                    <option value="install-docker">Install Docker</option>
+                                    <option value="security-harden">Security Harden</option>
+                                </select>
+                            </div>
+                            <div class="batch-field">
+                                <label>PEM KEY (paste content)</label>
+                                <textarea id="batchPemContent" class="batch-pem-input" placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;..." rows="3" spellcheck="false"></textarea>
+                            </div>
+                            <button class="btn btn-exec" id="batchStartBtn" onclick="startBatch()">START BATCH</button>
+                        </div>
+                        <div class="batch-results" id="batchResults"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

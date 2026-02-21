@@ -1,0 +1,160 @@
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║          🚀 EC2 PASSWORD SETUP - QUICK LAUNCH GUIDE              ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+
+📋 LAUNCH OPTIONS (Choose any one)
+════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────┐
+│  🏆 RECOMMENDED - One-Command Launch                             │
+└─────────────────────────────────────────────────────────────────┘
+
+   $ ./run.sh
+
+   ✓ Auto-installs dependencies
+   ✓ Starts server
+   ✓ Opens browser automatically
+   ✓ Shortest command!
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│  🚀 Quick Launch                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+   $ ./launch.sh
+
+   ✓ Checks dependencies
+   ✓ Starts server with auto-open
+   ✓ Shows status messages
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│  🎯 Standard Launch                                              │
+└─────────────────────────────────────────────────────────────────┘
+
+   $ ./start-ui.sh
+
+   ✓ Full checks and validation
+   ✓ Auto-opens browser
+   ✓ Verbose output
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│  🔧 NPM Commands                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+   With auto-open:
+   $ npm run start:open
+
+   Without auto-open:
+   $ npm start
+
+   Development mode (auto-reload):
+   $ npm run dev:open
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│  ⚙️  Manual Start                                                │
+└─────────────────────────────────────────────────────────────────┘
+
+   $ npm install
+   $ AUTO_OPEN_BROWSER=true node server.js
+
+
+════════════════════════════════════════════════════════════════════
+
+
+🌐 WHAT HAPPENS WHEN YOU LAUNCH
+════════════════════════════════════════════════════════════════════
+
+1. ✓ Dependencies installed (if needed)
+2. ✓ Server starts on http://localhost:3000
+3. ✓ WebSocket server initialized
+4. ✓ Browser opens automatically
+5. ✓ Web UI loads
+6. 🎉 Ready to configure EC2!
+
+
+⚡ QUICK COMPARISON
+════════════════════════════════════════════════════════════════════
+
+┌──────────────┬─────────┬────────────┬──────────────┐
+│ Command      │ Length  │ Auto-Open  │ Best For     │
+├──────────────┼─────────┼────────────┼──────────────┤
+│ ./run.sh     │ Tiny    │ ✅ Yes     │ Quick start  │
+│ ./launch.sh  │ Short   │ ✅ Yes     │ First time   │
+│ ./start-ui.sh│ Medium  │ ✅ Yes     │ Regular use  │
+│ npm start    │ Short   │ ❌ No      │ Background   │
+└──────────────┴─────────┴────────────┴──────────────┘
+
+
+🎬 GETTING STARTED
+════════════════════════════════════════════════════════════════════
+
+First time? Just run:
+
+   $ ./run.sh
+
+That's it! Your browser will open automatically.
+
+
+📍 MANUAL BROWSER ACCESS
+════════════════════════════════════════════════════════════════════
+
+If browser doesn't auto-open, navigate to:
+
+   http://localhost:3000
+
+
+🛑 STOPPING THE SERVER
+════════════════════════════════════════════════════════════════════
+
+Press: Ctrl + C
+
+(Server will shut down gracefully)
+
+
+💡 TIPS
+════════════════════════════════════════════════════════════════════
+
+• Use ./run.sh for quickest launch
+• All methods achieve the same result
+• Server runs on port 3000 by default
+• Change port: PORT=8080 ./run.sh
+
+
+🔧 TROUBLESHOOTING
+════════════════════════════════════════════════════════════════════
+
+Browser didn't open?
+   → Open manually: http://localhost:3000
+
+Port 3000 in use?
+   → Change port: PORT=8080 ./run.sh
+
+Node.js not found?
+   → Install from: https://nodejs.org/
+
+
+📚 NEXT STEPS
+════════════════════════════════════════════════════════════════════
+
+After launch:
+
+1. Choose setup mode (Existing Instance or User Data)
+2. Enter root password
+3. Upload PEM key (for existing instance)
+4. Enter EC2 details
+5. Click "Setup Password"
+6. Watch real-time logs
+7. Login: ssh root@your-ec2-ip
+
+
+═══════════════════════════════════════════════════════════════════
+
+Ready? Just run:  ./run.sh  🚀
+
+═══════════════════════════════════════════════════════════════════

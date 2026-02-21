@@ -1,0 +1,50 @@
+# PEM keys and private keys
+*.pem
+*.key
+*.ppk
+id_rsa*
+
+# Password files
+*password*
+*.pwd
+secrets.txt
+
+# Environment files
+.env
+.env.*
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Log files
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Upload and logs directories
+uploads/
+logs/
+
+# SQLite database
+data/
+*.db
+*.db-wal
+*.db-shm

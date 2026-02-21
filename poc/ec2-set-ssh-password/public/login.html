@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✻ EC2 OPS // Login</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✻</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="scanlines"></div>
+
+    <div class="login-overlay visible">
+        <div class="login-card">
+            <div class="login-header">
+                <span class="login-flower">✻</span>
+                <h2>EC2 <span class="accent">OPS</span></h2>
+                <p class="login-subtitle">Root Access Console</p>
+            </div>
+            <form id="loginForm" autocomplete="off">
+                <div class="login-field">
+                    <label for="loginUsername">USERNAME</label>
+                    <input type="text" id="loginUsername" placeholder="username" autocomplete="username" autofocus>
+                </div>
+                <div class="login-field">
+                    <label for="loginPassword">PASSWORD</label>
+                    <input type="password" id="loginPassword" placeholder="password" autocomplete="current-password">
+                </div>
+                <div class="login-error" id="loginError"></div>
+                <button type="submit" class="btn btn-login-submit">
+                    <span class="btn-flower">✻</span>
+                    AUTHENTICATE
+                </button>
+            </form>
+            <div class="login-footer">
+                <span class="version-tag">v2.0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Apply saved theme so login page matches user preference
+        (function() {
+            const theme = localStorage.getItem('ec2ops-theme') || 'daylight';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+
+        // If already authenticated, skip login
+        fetch('/api/auth/check')
+            .then(r => r.json())
+            .then(data => {
+                if (data.authenticated) window.location.href = '/chooser.html';
+            })
+            .catch(() => {});
+
+        // Login form
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('loginError');
+
+            errorEl.textContent = '';
+
+            if (!username || !password) {
+                errorEl.textContent = 'Username and password required';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    window.location.href = '/chooser.html';
+                } else {
+                    errorEl.textContent = data.error || 'Authentication failed';
+                    document.getElementById('loginPassword').value = '';
+                }
+            } catch (err) {
+                errorEl.textContent = 'Connection error';
+            }
+        });
+    </script>
+</body>
+</html>
