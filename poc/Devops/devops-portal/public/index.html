@@ -687,7 +687,7 @@ pre {
       <h1>DEVOPS PORTAL</h1>
       <p>Infrastructure as a Service Platform v1.0</p>
     </div>
-    <form id="login-form">
+    <form id="login-form" onsubmit="return false">
       <div class="form-group">
         <label>Username</label>
         <input type="text" id="login-user" value="admin" placeholder="admin" autocomplete="username">
@@ -789,7 +789,7 @@ pre {
             <button class="btn btn-secondary" onclick="Portal.clearCreds()" style="padding:4px 10px;font-size:10px;">CLEAR</button>
           </div>
           <div class="panel-body">
-            <form id="creds-form">
+            <form id="creds-form" onsubmit="return false">
               <div class="form-group">
                 <label>AWS Access Key ID</label>
                 <input type="text" id="creds-key" placeholder="AKIAIOSFODNN7EXAMPLE" autocomplete="off">

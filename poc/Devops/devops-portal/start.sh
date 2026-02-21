@@ -1,4 +1,4 @@
-#\!/bin/bash
+#!/bin/bash
 # DevOps Portal - Quick Start Script
 # Usage: bash start.sh
 
@@ -31,7 +31,7 @@ BANNER
 }
 
 check_node() {
-  if \! command -v node &>/dev/null; then
+  if ! command -v node &>/dev/null; then
     echo -e "${RED}[ERROR] Node.js not found. Install from https://nodejs.org (v18+)${NC}"
     exit 1
   fi
@@ -44,11 +44,11 @@ check_node() {
 }
 
 check_docker() {
-  if \! command -v docker &>/dev/null; then
+  if ! command -v docker &>/dev/null; then
     echo -e "${YELLOW}[WARN] Docker not found. Docker option unavailable.${NC}"
     return 1
   fi
-  if \! docker info &>/dev/null; then
+  if ! docker info &>/dev/null; then
     echo -e "${YELLOW}[WARN] Docker daemon not running.${NC}"
     return 1
   fi
@@ -77,7 +77,7 @@ check_status() {
   echo ""
   echo -e "${CYAN}Checking if DevOps Portal is running on port ${APP_PORT}...${NC}"
   if curl -s --max-time 5 "http://localhost:${APP_PORT}/health" | grep -q '"status":"ok"' 2>/dev/null; then
-    echo -e "${GREEN}[✓] DevOps Portal is RUNNING\!${NC}"
+    echo -e "${GREEN}[✓] DevOps Portal is RUNNING!${NC}"
     echo -e "${GREEN}    Local:   http://localhost:${APP_PORT}${NC}"
     echo -e "${GREEN}    Network: http://${IP}:${APP_PORT}${NC}"
     echo -e "${YELLOW}    Login:   admin / password${NC}"
@@ -95,7 +95,7 @@ option_run_app() {
   install_deps
 
   # Setup .env if not present
-  if [ \! -f "${APP_DIR}/.env" ]; then
+  if [ ! -f "${APP_DIR}/.env" ]; then
     cp "${APP_DIR}/.env.example" "${APP_DIR}/.env" 2>/dev/null || true
     # Generate random session secret
     if command -v openssl &>/dev/null; then
@@ -107,6 +107,15 @@ option_run_app() {
 
   IP=$(get_host_ip)
   echo ""
+
+  # Kill any existing process on the port
+  PORT_PID=$(lsof -ti tcp:${APP_PORT} 2>/dev/null || true)
+  if [ -n "$PORT_PID" ]; then
+    echo -e "${YELLOW}[INFO] Port ${APP_PORT} is in use (PID: $PORT_PID). Stopping it...${NC}"
+    kill -9 $PORT_PID 2>/dev/null || true
+    sleep 1
+  fi
+
   echo -e "${GREEN}Starting DevOps Portal on port ${APP_PORT}...${NC}"
 
   if command -v pm2 &>/dev/null; then
@@ -118,7 +127,7 @@ option_run_app() {
     echo -e "${YELLOW}[INFO] PM2 not found. Starting directly with node...${NC}"
     echo -e "${YELLOW}[INFO] Press Ctrl+C to stop${NC}"
     PORT=${APP_PORT} node "${APP_DIR}/app.js" &
-    APP_PID=$\!
+    APP_PID=$!
     sleep 3
     if kill -0 $APP_PID 2>/dev/null; then
       echo -e "${GREEN}[✓] Server started (PID: $APP_PID)${NC}"
@@ -128,7 +137,7 @@ option_run_app() {
   sleep 2
   echo ""
   echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
-  echo -e "${GREEN}║   DevOps Portal is ready\!                ║${NC}"
+  echo -e "${GREEN}║   DevOps Portal is ready!                ║${NC}"
   echo -e "${GREEN}║   Local:   http://localhost:${APP_PORT}       ║${NC}"
   echo -e "${GREEN}║   Network: http://${IP}:${APP_PORT}       ║${NC}"
   echo -e "${GREEN}║   Login:   admin / password              ║${NC}"
@@ -138,7 +147,7 @@ option_run_app() {
 option_docker() {
   echo ""
   echo -e "${BLUE}=== Option 2: Build Docker Image & Run ===${NC}"
-  if \! check_docker; then
+  if ! check_docker; then
     echo -e "${RED}[ERROR] Docker required for this option${NC}"
     return 1
   fi
@@ -168,7 +177,7 @@ option_docker() {
   IP=$(get_host_ip)
   echo ""
   echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
-  echo -e "${GREEN}║   DevOps Portal running in Docker\!       ║${NC}"
+  echo -e "${GREEN}║   DevOps Portal running in Docker!       ║${NC}"
   echo -e "${GREEN}║   Local:   http://localhost:80           ║${NC}"
   echo -e "${GREEN}║   Network: http://${IP}:80           ║${NC}"
   echo -e "${GREEN}║   Login:   admin / password              ║${NC}"
@@ -179,7 +188,7 @@ option_docker() {
   if [[ "$push_confirm" =~ ^[Yy]$ ]]; then
     echo -e "${BLUE}[INFO] Pushing ${IMAGE_NAME}:${TAG} to Docker Hub...${NC}"
     docker push "${IMAGE_NAME}:${TAG}"
-    echo -e "${GREEN}[✓] Pushed\! Pull with: docker pull ${IMAGE_NAME}:${TAG}${NC}"
+    echo -e "${GREEN}[✓] Pushed! Pull with: docker pull ${IMAGE_NAME}:${TAG}${NC}"
   fi
 }
 
@@ -189,12 +198,12 @@ option_check_status() {
 
   # Check on port 8080 (default)
   APP_PORT=8080
-  if \! check_status; then
+  if ! check_status; then
     # Try port 80 (docker)
     APP_PORT=80
     echo -e "${CYAN}Checking port 80 (Docker)...${NC}"
     if curl -s --max-time 5 "http://localhost:80/health" | grep -q '"status":"ok"' 2>/dev/null; then
-      echo -e "${GREEN}[✓] DevOps Portal is RUNNING on port 80 (Docker)\!${NC}"
+      echo -e "${GREEN}[✓] DevOps Portal is RUNNING on port 80 (Docker)!${NC}"
       IP=$(get_host_ip)
       echo -e "${GREEN}    URL: http://${IP}:80${NC}"
     else
@@ -216,6 +225,54 @@ option_check_status() {
   fi
 }
 
+option_stop() {
+  echo ""
+  echo -e "${BLUE}=== Option 4: Stop App ===${NC}"
+
+  STOPPED=0
+
+  # Stop PM2 process
+  if command -v pm2 &>/dev/null; then
+    if pm2 list 2>/dev/null | grep -q "devops-portal"; then
+      pm2 stop devops-portal 2>/dev/null && echo -e "${GREEN}[✓] PM2 process stopped${NC}" && STOPPED=1
+      pm2 delete devops-portal 2>/dev/null || true
+    fi
+  fi
+
+  # Stop Docker container
+  if command -v docker &>/dev/null; then
+    if docker ps --filter "name=devops-portal" --format "{{.Names}}" 2>/dev/null | grep -q "devops-portal"; then
+      docker stop devops-portal 2>/dev/null && echo -e "${GREEN}[✓] Docker container stopped${NC}" && STOPPED=1
+      docker rm devops-portal 2>/dev/null || true
+    fi
+  fi
+
+  # Kill any node process on the port
+  PORT_PID=$(lsof -ti tcp:${APP_PORT} 2>/dev/null || true)
+  if [ -n "$PORT_PID" ]; then
+    kill -9 $PORT_PID 2>/dev/null && echo -e "${GREEN}[✓] Killed process on port ${APP_PORT} (PID: $PORT_PID)${NC}" && STOPPED=1
+  fi
+
+  PORT_PID_80=$(lsof -ti tcp:80 2>/dev/null || true)
+  if [ -n "$PORT_PID_80" ]; then
+    sudo kill -9 $PORT_PID_80 2>/dev/null && echo -e "${GREEN}[✓] Killed process on port 80 (PID: $PORT_PID_80)${NC}" || true
+  fi
+
+  if [ "$STOPPED" -eq 0 ]; then
+    echo -e "${YELLOW}[INFO] No running DevOps Portal processes found${NC}"
+  else
+    echo -e "${GREEN}[✓] DevOps Portal stopped${NC}"
+  fi
+}
+
+option_restart() {
+  echo ""
+  echo -e "${BLUE}=== Option 5: Restart App ===${NC}"
+  option_stop
+  sleep 2
+  option_run_app
+}
+
 # ===== MAIN MENU =====
 clear
 banner
@@ -224,12 +281,16 @@ echo ""
 echo -e "  ${GREEN}1${NC}) Run app locally         (Node.js, port ${APP_PORT})"
 echo -e "  ${GREEN}2${NC}) Containerize & run       (Docker, port 80)"
 echo -e "  ${GREEN}3${NC}) Check status             (verify if app is running)"
+echo -e "  ${GREEN}4${NC}) Stop app                 (stop PM2 / Docker / kill port)"
+echo -e "  ${GREEN}5${NC}) Restart app              (stop then start)"
 echo ""
-read -p "Enter option [1/2/3]: " choice
+read -p "Enter option [1/2/3/4/5]: " choice
 
 case "$choice" in
   1) option_run_app ;;
   2) option_docker ;;
   3) option_check_status ;;
-  *) echo -e "${RED}Invalid option. Run again and choose 1, 2, or 3.${NC}"; exit 1 ;;
+  4) option_stop ;;
+  5) option_restart ;;
+  *) echo -e "${RED}Invalid option. Run again and choose 1-5.${NC}"; exit 1 ;;
 esac
