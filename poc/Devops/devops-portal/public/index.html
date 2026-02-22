@@ -671,6 +671,72 @@ pre {
 .term-dot.yellow { background: #ffbd2e; }
 .term-dot.green { background: #28c840; }
 
+/* Info Modal */
+#info-modal-overlay {
+  position: fixed; inset: 0; background: rgba(8,12,10,0.92);
+  z-index: 500; display: none; align-items: flex-start;
+  justify-content: center; padding: 40px 20px; overflow-y: auto;
+  backdrop-filter: blur(4px);
+}
+#info-modal-overlay.visible { display: flex; }
+#info-modal {
+  width: 100%; max-width: 860px; background: var(--bg2);
+  border: 1px solid var(--border2); border-radius: var(--radius);
+  position: relative; box-shadow: 0 0 40px rgba(0,255,136,0.1);
+}
+#info-modal::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; background: linear-gradient(90deg, transparent, var(--green), transparent);
+}
+.info-modal-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.info-modal-icon { font-size: 24px; }
+.info-modal-title { flex: 1; font-size: 16px; font-weight: 700; color: var(--green); letter-spacing: 1px; }
+.info-modal-close {
+  background: none; border: 1px solid var(--border2); color: var(--text3);
+  font-family: var(--font-mono); font-size: 12px; padding: 4px 10px;
+  cursor: pointer; border-radius: var(--radius); transition: all 0.15s;
+}
+.info-modal-close:hover { border-color: var(--red); color: var(--red); }
+.info-modal-body { padding: 20px; }
+.info-section { margin-bottom: 20px; }
+.info-section-title {
+  font-size: 10px; color: var(--text3); letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: 10px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.info-desc { font-size: 13px; color: var(--text); line-height: 1.7; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.info-item {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px;
+}
+.info-item-label { font-size: 10px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+.info-item-value { font-size: 12px; color: var(--text); }
+.info-badge {
+  display: inline-block; padding: 2px 8px; font-size: 10px;
+  border-radius: 2px; font-weight: 600; margin: 2px;
+}
+.info-badge-input { background: rgba(68,136,255,0.15); color: var(--blue); }
+.info-badge-output { background: rgba(0,255,136,0.12); color: var(--green); }
+.info-badge-optional { background: rgba(255,204,0,0.12); color: var(--yellow); }
+.info-steps { counter-reset: step; list-style: none; padding: 0; }
+.info-steps li { counter-increment: step; padding: 8px 0 8px 32px; position: relative;
+  border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text); line-height: 1.5; }
+.info-steps li:last-child { border-bottom: none; }
+.info-steps li::before {
+  content: counter(step); position: absolute; left: 0; top: 8px;
+  width: 20px; height: 20px; background: var(--green3); color: var(--green);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; text-align: center; line-height: 20px;
+}
+.info-api-row { display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px; font-size: 11px; }
+.info-method { font-weight: 700; color: var(--blue); min-width: 40px; }
+.info-path { color: var(--green); font-family: var(--font-mono); }
+.info-method-desc { color: var(--text3); }
+
 /* Package cards */
 .pkg-card {
   background: var(--bg3);
@@ -752,6 +818,7 @@ pre {
   <!-- Header + Nav -->
   <div id="header">
     <div class="logo">DEVOPS<span>/</span>PORTAL</div>
+    <button class="btn btn-secondary" id="info-btn" onclick="Portal.info.show()" title="Tab info & help" style="padding:5px 10px;font-size:11px;flex-shrink:0">ℹ INFO</button>
     <nav id="nav">
       <div class="nav-tab active" data-tab="home">🏠 Home</div>
       <div class="nav-tab" data-tab="ec2">⚡ EC2</div>
@@ -773,6 +840,7 @@ pre {
       <div class="nav-tab" data-tab="logs">📋 Logs</div>
       <div class="nav-tab" data-tab="cost">💰 Cost</div>
       <div class="nav-tab" data-tab="audit">🕵 Audit</div>
+      <div class="nav-tab" data-tab="cncflab">🧪 CNCF Lab</div>
       <div class="nav-tab" data-tab="cfn">☁ CloudFormation</div>
       <div class="nav-tab" data-tab="codebuild">🔨 CodeBuild</div>
       <div class="nav-tab" data-tab="pipeline">🔄 Pipeline</div>
@@ -2593,6 +2661,87 @@ spec:
       </div>
     </div>
 
+    <!-- CNCF LAB TAB -->
+    <div class="tab-panel" id="tab-cncflab">
+
+      <!-- Header -->
+      <div class="panel" style="border-color:var(--blue);box-shadow:0 0 30px rgba(68,136,255,0.1)">
+        <div class="panel-header" style="background:rgba(68,136,255,0.05)">
+          <div class="panel-title" style="font-size:14px;color:var(--blue)">🧪 CNCF Lab — Guided Walkthroughs & Tutorials</div>
+          <div style="font-size:11px;color:var(--text3)">Katacoda-style step-by-step labs with architecture diagrams, manifests, and live execution</div>
+        </div>
+        <div class="panel-body" style="padding:12px 16px">
+          <div class="grid-4">
+            <div class="resource-card" style="cursor:pointer;border-color:var(--blue)" onclick="Portal.cncflab.showSection('istio')">
+              <div style="font-size:18px;margin-bottom:6px">🕸</div>
+              <div style="font-weight:700;color:var(--blue)">Istio</div>
+              <div style="font-size:10px;color:var(--text3)">10 steps • Service Mesh</div>
+            </div>
+            <div class="resource-card" style="cursor:pointer" onclick="Portal.cncflab.showSection('tools')">
+              <div style="font-size:18px;margin-bottom:6px">🔧</div>
+              <div style="font-weight:700;color:var(--text)">CNCF Tools</div>
+              <div style="font-size:10px;color:var(--text3)">10 tools • GitOps, Security, Observability</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Output panel -->
+      <div class="panel" id="cncf-output-panel" style="display:none">
+        <div class="panel-header">
+          <div class="panel-title" id="cncf-output-title">Output</div>
+          <button class="btn btn-secondary" onclick="document.getElementById('cncf-output-panel').style.display='none'" style="padding:4px 10px;font-size:10px">✕ CLOSE</button>
+        </div>
+        <div class="panel-body" style="padding:0">
+          <div id="cncf-output" style="background:var(--bg);padding:16px;font-family:var(--font-mono);font-size:11px;line-height:1.8;max-height:500px;overflow-y:auto;white-space:pre-wrap;color:var(--text)"></div>
+        </div>
+      </div>
+
+      <!-- ISTIO SECTION -->
+      <div id="cncf-istio-section" style="display:none">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">🕸 Istio Service Mesh — 10-Step Walkthrough</div>
+            <button class="btn btn-secondary" onclick="Portal.cncflab.showSection(null)" style="padding:4px 10px;font-size:10px">← BACK</button>
+          </div>
+          <div class="panel-body">
+            <p style="color:var(--text3);font-size:12px;margin-bottom:16px">
+              Follow these steps in order to deploy a complete Istio service mesh. Each step shows the architecture change, the manifest applied, and streams real kubectl output.
+            </p>
+            <div id="istio-steps-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CNCF TOOLS SECTION -->
+      <div id="cncf-tools-section" style="display:none">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">🔧 Top 10 CNCF Tools — Guided Labs</div>
+            <button class="btn btn-secondary" onclick="Portal.cncflab.showSection(null)" style="padding:4px 10px;font-size:10px">← BACK</button>
+          </div>
+          <div class="panel-body">
+            <div class="grid-2" id="cncf-tools-grid"></div>
+          </div>
+        </div>
+
+        <!-- Selected tool steps -->
+        <div id="cncf-tool-steps-panel" style="display:none">
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title" id="cncf-tool-title">Tool Steps</div>
+              <button class="btn btn-secondary" onclick="document.getElementById('cncf-tool-steps-panel').style.display='none'" style="padding:4px 10px;font-size:10px">← TOOLS</button>
+            </div>
+            <div class="panel-body">
+              <p id="cncf-tool-desc" style="color:var(--text3);font-size:12px;margin-bottom:16px"></p>
+              <div id="cncf-tool-steps-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end tab-cncflab -->
+
   </div><!-- end #content -->
 
   <!-- Log Console -->
@@ -2610,6 +2759,18 @@ spec:
 
 <!-- Toast container -->
 <div id="toast-container"></div>
+
+<!-- INFO MODAL -->
+<div id="info-modal-overlay" onclick="if(event.target===this)Portal.info.close()">
+  <div id="info-modal">
+    <div class="info-modal-header">
+      <div class="info-modal-icon" id="info-modal-icon"></div>
+      <div class="info-modal-title" id="info-modal-title"></div>
+      <button class="info-modal-close" onclick="Portal.info.close()">✕ CLOSE</button>
+    </div>
+    <div class="info-modal-body" id="info-modal-body"></div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>

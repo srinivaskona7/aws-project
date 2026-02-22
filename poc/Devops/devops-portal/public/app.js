@@ -182,6 +182,7 @@ const Portal = (() => {
     document.getElementById(`tab-${tabId}`)?.classList.add('active');
     if (tabId === 'templates') templates.load();
     if (tabId === 'audit') audit.load();
+    if (typeof info !== 'undefined') info.setTab(tabId);
   }
 
   function toggleConsole() {
@@ -1676,6 +1677,263 @@ const Portal = (() => {
     }
   };
 
+  // ===== CNCF LAB =====
+  const cncflab = {
+    istioSteps: [],
+    cncfTools: [],
+    currentTool: null,
+
+    showSection(section) {
+      document.getElementById('cncf-istio-section').style.display = 'none';
+      document.getElementById('cncf-tools-section').style.display = 'none';
+      if (section === 'istio') {
+        document.getElementById('cncf-istio-section').style.display = 'block';
+        this.loadIstioSteps();
+      } else if (section === 'tools') {
+        document.getElementById('cncf-tools-section').style.display = 'block';
+        this.loadTools();
+      }
+    },
+
+    async loadIstioSteps() {
+      if (this.istioSteps.length > 0) { this.renderIstioSteps(); return; }
+      try {
+        const data = await api('GET', '/api/cncf-lab/istio/steps');
+        this.istioSteps = data.steps || [];
+        this.renderIstioSteps();
+      } catch(err) { toast(err.message, 'error'); }
+    },
+
+    renderIstioSteps() {
+      const container = document.getElementById('istio-steps-list');
+      if (!container) return;
+      container.innerHTML = this.istioSteps.map(step => `
+        <div class="panel" style="margin-bottom:12px;border-left:3px solid var(--blue)">
+          <div class="panel-header" style="cursor:pointer" onclick="Portal.cncflab.toggleIstioStep('${step.id}')">
+            <div class="panel-title">
+              <span style="background:var(--blue);color:var(--bg);padding:2px 8px;border-radius:2px;font-size:11px;margin-right:8px">${step.step}</span>
+              ${escHtml(step.title)}
+            </div>
+            <button class="btn btn-primary" onclick="event.stopPropagation();Portal.cncflab.applyIstioStep('${step.id}')" style="padding:4px 12px;font-size:10px">▶ APPLY</button>
+          </div>
+          <div id="istio-step-detail-${step.id}" style="display:none">
+            <div class="panel-body" style="padding:12px 16px">
+              <p style="color:var(--text2);font-size:12px;margin-bottom:12px">${escHtml(step.description)}</p>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                  <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">ARCHITECTURE CHANGE</div>
+                  <pre style="font-size:10px;line-height:1.5;color:var(--green);background:var(--bg);border:1px solid var(--border);padding:10px;overflow-x:auto">${escHtml(step.architecture || '')}</pre>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">IMPACT</div>
+                  <div style="background:rgba(255,204,0,0.05);border:1px solid rgba(255,204,0,0.3);padding:10px;font-size:11px;color:var(--yellow);line-height:1.6;border-radius:4px">${escHtml(step.impact || '')}</div>
+                  ${step.hasManifest ? `<button class="btn btn-secondary" onclick="Portal.cncflab.showManifest('${step.id}')" style="margin-top:8px;padding:4px 10px;font-size:10px">VIEW MANIFEST</button>` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`).join('');
+    },
+
+    toggleIstioStep(id) {
+      const el = document.getElementById(`istio-step-detail-${id}`);
+      if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    },
+
+    async showManifest(stepId) {
+      try {
+        const data = await api('GET', `/api/cncf-lab/istio/steps/${stepId}`);
+        if (data.manifest) {
+          const panel = document.getElementById('cncf-output-panel');
+          const out = document.getElementById('cncf-output');
+          const title = document.getElementById('cncf-output-title');
+          title.textContent = `Manifest: ${data.title}`;
+          out.textContent = data.manifest;
+          panel.style.display = 'block';
+          panel.scrollIntoView({ behavior: 'smooth' });
+        }
+      } catch(err) { toast(err.message, 'error'); }
+    },
+
+    async applyIstioStep(stepId) {
+      const panel = document.getElementById('cncf-output-panel');
+      const out = document.getElementById('cncf-output');
+      const title = document.getElementById('cncf-output-title');
+      const step = this.istioSteps.find(s => s.id === stepId);
+      title.textContent = `Step ${step?.step}: ${step?.title || stepId}`;
+      out.textContent = `[STARTING] Applying step: ${stepId}\n`;
+      panel.style.display = 'block';
+      panel.scrollIntoView({ behavior: 'smooth' });
+      log(`[CNCF-LAB] Applying Istio step: ${stepId}`, 'cmd');
+      try {
+        const res = await api('POST', `/api/cncf-lab/istio/apply/${stepId}`, {}, true);
+        await this._stream(res, out);
+      } catch(err) { out.textContent += `\nError: ${err.message}`; toast(err.message, 'error'); }
+    },
+
+    async loadTools() {
+      if (this.cncfTools.length > 0) { this.renderTools(); return; }
+      try {
+        const data = await api('GET', '/api/cncf-lab/tools');
+        this.cncfTools = data.tools || [];
+        this.renderTools();
+      } catch(err) { toast(err.message, 'error'); }
+    },
+
+    renderTools() {
+      const grid = document.getElementById('cncf-tools-grid');
+      if (!grid) return;
+      const icons = { argocd: '🐙', kyverno: '🛡', 'prometheus-grafana': '📊', keda: '⚡', falco: '🦅', 'opa-gatekeeper': '⚖', velero: '💾', crossplane: '🔗', tekton: '⚙', fluxcd: '🌊' };
+      grid.innerHTML = this.cncfTools.map(tool => `
+        <div class="resource-card" style="cursor:pointer" onclick="Portal.cncflab.selectTool('${tool.id}')">
+          <div style="font-size:24px;margin-bottom:8px">${icons[tool.id] || '🔧'}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">${escHtml(tool.name.split('—')[0].trim())}</div>
+          <div style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:8px">${escHtml(tool.description)}</div>
+          <div style="font-size:10px;color:var(--blue)">${tool.steps} guided steps →</div>
+        </div>`).join('');
+    },
+
+    async selectTool(toolId) {
+      this.currentTool = toolId;
+      try {
+        const data = await api('GET', `/api/cncf-lab/tools/${toolId}`);
+        document.getElementById('cncf-tool-title').textContent = data.name;
+        document.getElementById('cncf-tool-desc').textContent = data.description;
+        const list = document.getElementById('cncf-tool-steps-list');
+        list.innerHTML = (data.steps || []).map((step, i) => `
+          <div class="panel" style="margin-bottom:12px;border-left:3px solid var(--green)">
+            <div class="panel-header">
+              <div class="panel-title">
+                <span style="background:var(--green);color:var(--bg);padding:2px 8px;border-radius:2px;font-size:11px;margin-right:8px">${i + 1}</span>
+                ${escHtml(step.title)}
+              </div>
+              <button class="btn btn-primary" onclick="Portal.cncflab.applyToolStep('${toolId}', '${step.id}')" style="padding:4px 12px;font-size:10px">▶ RUN</button>
+            </div>
+          </div>`).join('');
+        document.getElementById('cncf-tool-steps-panel').style.display = 'block';
+        document.getElementById('cncf-tool-steps-panel').scrollIntoView({ behavior: 'smooth' });
+      } catch(err) { toast(err.message, 'error'); }
+    },
+
+    async applyToolStep(toolId, stepId) {
+      const panel = document.getElementById('cncf-output-panel');
+      const out = document.getElementById('cncf-output');
+      const title = document.getElementById('cncf-output-title');
+      title.textContent = `${toolId} → ${stepId}`;
+      out.textContent = `[STARTING] ${toolId} / ${stepId}\n`;
+      panel.style.display = 'block';
+      panel.scrollIntoView({ behavior: 'smooth' });
+      log(`[CNCF-LAB] Running ${toolId}/${stepId}`, 'cmd');
+      try {
+        const res = await api('POST', `/api/cncf-lab/tools/${toolId}/steps/${stepId}`, {}, true);
+        await this._stream(res, out);
+      } catch(err) { out.textContent += `\nError: ${err.message}`; toast(err.message, 'error'); }
+    },
+
+    async _stream(response, outputEl) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const payload = JSON.parse(line.slice(6));
+              if (payload.line) {
+                outputEl.textContent += payload.line + '\n';
+                outputEl.scrollTop = outputEl.scrollHeight;
+                const lt = payload.line.includes('[OK]') || payload.line.includes('[DONE]') ? 'success'
+                  : payload.line.includes('[ERROR]') ? 'error'
+                  : payload.line.includes('[WARN]') ? 'warn'
+                  : payload.line.startsWith('[CMD]') ? 'cmd' : 'info';
+                log(payload.line, lt);
+              }
+              if (payload.done) {
+                const msg = payload.exitCode === 0 ? '✓ Step completed!' : `✗ Step failed (exit ${payload.exitCode})`;
+                outputEl.textContent += '\n' + msg;
+                toast(msg, payload.exitCode === 0 ? 'success' : 'error');
+              }
+            } catch(e) {}
+          }
+        }
+      }
+    }
+  };
+
+  // ===== INFO PAGES =====
+  const TAB_INFO = {
+    home:{icon:'🏠',title:'Home Dashboard',desc:'Central hub. Enter IAM credentials to unlock all 50+ services. View live EC2, EKS, S3, ASG resource counts.',inputs:[{n:'AWS Access Key ID',t:'AKIA... (IAM user key)',r:true},{n:'AWS Secret Access Key',t:'40-char secret',r:true},{n:'Region',t:'us-east-1',r:true}],outputs:['EC2 table (ID, type, state, IPs)','EKS/S3/ASG counts'],steps:['Enter IAM credentials','Click SAVE CREDS','Click ↻ REFRESH','Click count cards to jump to service tab'],apis:['POST /api/credentials','GET /api/resources']},
+    ec2:{icon:'⚡',title:'EC2 Terraform Provisioner',desc:'Provision EC2 via Terraform. Generates main.tf, runs init+apply, streams output. Idempotent.',inputs:[{n:'Instance Name',t:'my-ec2',r:true},{n:'Instance Type',t:'t3.micro/medium/large',r:true},{n:'AMI ID',t:'ami-0c55b159cbfafe1f0',r:true},{n:'Key Pair',t:'existing keypair name',r:false},{n:'VPC/Subnet/SG',t:'vpc-xxx/subnet-xxx/sg-xxx',r:false}],outputs:['Terraform streaming output','instance_id, public_ip, private_ip'],steps:['Set AWS credentials on Home tab','Fill instance details','Toggle Dry Run to plan only','Click DEPLOY EC2'],apis:['POST /api/terraform/ec2','POST /api/terraform/vpc']},
+    eks:{icon:'☸',title:'EKS Cluster Deployer',desc:'Deploy managed EKS cluster via eksctl. Includes OIDC, managed node groups, kubeconfig update. ~15 min.',inputs:[{n:'Cluster Name',t:'my-cluster',r:true},{n:'K8s Version',t:'1.28 / 1.29',r:true},{n:'Node Type',t:'t3.medium',r:true},{n:'Min/Max/Desired',t:'1/5/2',r:true}],outputs:['eksctl streaming output','kubeconfig updated on server'],steps:['Set AWS credentials','Configure cluster settings','Click DEPLOY EKS','Use cluster ops buttons after deploy'],apis:['POST /api/eks/deploy']},
+    asg:{icon:'⚖',title:'Auto Scaling Group Wizard',desc:'Create EC2 ASG with Launch Template and target-tracking CPU policy (70%). Idempotent — updates if exists.',inputs:[{n:'ASG Name',t:'my-asg',r:true},{n:'AMI ID',t:'ami-xxxxxxxx',r:true},{n:'Instance Type',t:'t3.small',r:true},{n:'Min/Max/Desired',t:'1/5/2',r:true},{n:'Subnet IDs',t:'subnet-xxx,subnet-yyy',r:false}],outputs:['Launch Template ID','ASG ARN','Scale-out policy ARN'],steps:['Configure AMI, type, sizes','Add subnet IDs for multi-AZ','Toggle Dry Run for preview','Click CREATE ASG'],apis:['POST /api/asg']},
+    terminal:{icon:'💻',title:'SSH Virtual Shell',desc:'Browser-based SSH terminal via WebSocket. PEM key or password auth. Quick Commands run exec-over-SSH without opening full shell.',inputs:[{n:'Hostname/IP',t:'54.x.x.x or DNS',r:true},{n:'Username',t:'ec2-user/ubuntu/admin',r:true},{n:'PEM Key',t:'Full .pem file contents',r:false},{n:'Password',t:'alternative to PEM',r:false}],outputs:['Interactive terminal','Command output in Quick Commands panel'],steps:['Enter EC2 IP + username','Paste PEM key','Click TEST CONNECTION','Click OPEN SHELL for interactive terminal','Or use Quick Command buttons for one-shot ops'],apis:['POST /api/terminal/test-connection','POST /api/terminal/exec','WS /ws']},
+    ec2pkg:{icon:'📦',title:'EC2 Package Manager',desc:'One-click install of 37 DevOps tools on remote EC2 via SSH. Idempotent scripts. Live streaming output.',inputs:[{n:'EC2 Hostname',t:'IP or DNS',r:true},{n:'Username',t:'ec2-user/ubuntu',r:true},{n:'PEM Key or Password',t:'SSH credentials',r:true}],outputs:['Live install log','CHECK INSTALLED marks tools green'],steps:['Enter SSH credentials','Click CHECK INSTALLED to scan','Click INSTALL on tools','Or select multiple → INSTALL N PACKAGES','Use bundles for Full Stack or CNCF'],apis:['POST /api/ec2-packages/install','POST /api/ec2-packages/install-many','POST /api/ec2-packages/check']},
+    nginx:{icon:'🌐',title:'Nginx Config Generator',desc:'Generate production Nginx config with reverse proxy, SSL/TLS, security headers, gzip. Copy-paste ready.',inputs:[{n:'Server Name',t:'myapp.example.com',r:true},{n:'Proxy Pass',t:'http://localhost:3000',r:false},{n:'SSL Certificate/Key',t:'paths on server',r:false}],outputs:['Complete nginx.conf server block','HTTP→HTTPS redirect (if SSL enabled)'],steps:['Enter domain name','Set upstream proxy URL','Toggle SSL for HTTPS','Click GENERATE CONFIG','Copy to /etc/nginx/conf.d/'],apis:['POST /api/nginx/generate']},
+    docker:{icon:'🐳',title:'Docker Build & Run',desc:'Build images, run containers, list running containers, stream logs. Full Docker lifecycle.',inputs:[{n:'Image Name',t:'myapp',r:true},{n:'Dockerfile',t:'Multi-line content',r:false},{n:'Ports',t:'8080:80,443:443',r:false},{n:'Env Vars',t:'KEY=VALUE,KEY2=VAL2',r:false}],outputs:['Streaming build output','Container ID','Container list with status','Container logs'],steps:['Paste Dockerfile, set image name','Click BUILD IMAGE','For run: set image + ports + env','Click RUN CONTAINER','Click PS → LOGS button'],apis:['POST /api/docker/build','POST /api/docker/run','GET /api/docker/ps','POST /api/docker/logs']},
+    k8s:{icon:'⚓',title:'Kubernetes Resource Manager',desc:'Full kubectl via UI: apply manifests, get/describe resources, scale deployments, rollouts.',inputs:[{n:'YAML Manifest',t:'Full K8s YAML',r:false},{n:'Namespace',t:'default',r:false},{n:'Resource Type',t:'pods/deployments/services',r:false},{n:'Deployment Name',t:'for scale/rollout',r:false}],outputs:['kubectl output','Scale confirmation','Rollout status'],steps:['For apply: paste YAML → KUBECTL APPLY','For get: select type+namespace → KUBECTL GET','For scale: name+replicas → SCALE','For rollout: name+action → RUN'],apis:['POST /api/k8s/apply','POST /api/k8s/get','POST /api/k8s/scale','POST /api/k8s/rollout']},
+    helm:{icon:'⛵',title:'Helm Chart Deployer',desc:'Install/upgrade/rollback Helm releases. Auto-adds repos. Supports custom values and dry-run.',inputs:[{n:'Release Name',t:'my-nginx',r:true},{n:'Chart',t:'bitnami/nginx',r:true},{n:'Repo URL',t:'https://charts.bitnami.com/bitnami',r:false},{n:'Values',t:'key=value (one per line)',r:false}],outputs:['helm install streaming output','Release status','helm list table'],steps:['Enter release name + chart','Add repo name/URL if needed','Set values','Toggle Dry Run for validation','Click INSTALL/UPGRADE'],apis:['POST /api/helm/install','POST /api/helm/list','POST /api/helm/rollback']},
+    s3:{icon:'🪣',title:'S3 Bucket Manager',desc:'Create S3 buckets with AES256 encryption, versioning, and public access blocking by default.',inputs:[{n:'Bucket Name',t:'globally-unique-name',r:true},{n:'Region',t:'us-east-1',r:false},{n:'Versioning',t:'toggle',r:false},{n:'Block Public Access',t:'default: ON',r:false}],outputs:['Creation confirmation','Bucket list with dates','Object listing (BROWSE)'],steps:['Enter unique bucket name','Toggle versioning if needed','Click CREATE BUCKET','Click LIST to see all buckets'],apis:['POST /api/s3/buckets','GET /api/s3/buckets']},
+    iam:{icon:'🔐',title:'IAM Role Creator',desc:'Create IAM roles with trust policies for EC2, Lambda, EKS, CodeBuild. Attach managed policies.',inputs:[{n:'Role Name',t:'MyAppRole',r:true},{n:'Trust Service',t:'ec2.amazonaws.com etc.',r:true},{n:'Policy ARNs',t:'arn:aws:iam::aws:policy/...',r:false}],outputs:['Role ARN','Role name'],steps:['Enter role name','Select service','Add policy ARNs','Click CREATE ROLE','Click LIST ROLES'],apis:['POST /api/iam/roles','GET /api/iam/roles']},
+    secrets:{icon:'🔑',title:'Secrets Manager',desc:'Store and retrieve secrets (strings or JSON). Optional KMS encryption. Hierarchical naming with /.',inputs:[{n:'Secret Name',t:'/myapp/db/password',r:true},{n:'Value',t:'string or JSON',r:true}],outputs:['Secret ARN','Listing with last-modified','Retrieved value'],steps:['Enter name + value','Click STORE SECRET','Click LIST','Click RETRIEVE on any secret'],apis:['POST /api/secrets','GET /api/secrets','GET /api/secrets/:name']},
+    lambda:{icon:'λ',title:'Lambda Manager',desc:'List and invoke Lambda functions with JSON payloads. View response body and execution logs.',inputs:[{n:'Function Name',t:'my-function or ARN',r:true},{n:'Payload JSON',t:'{"key":"value"}',r:false}],outputs:['Status code','Response body','CloudWatch tail logs'],steps:['Click LIST','Enter function name','Paste JSON payload','Click INVOKE'],apis:['GET /api/lambda/functions','POST /api/lambda/invoke']},
+    route53:{icon:'🌍',title:'Route53 DNS Manager',desc:'List hosted zones and UPSERT DNS records (A, CNAME, MX, TXT, AAAA).',inputs:[{n:'Zone ID',t:'Z1234ABC (click LIST to find)',r:true},{n:'Record Name',t:'api.example.com',r:true},{n:'Type + Value + TTL',t:'A / 54.x.x.x / 300',r:true}],outputs:['Change confirmation','Zones table (click row to select ID)'],steps:['Click LIST ZONES','Click zone to auto-fill ID','Enter record name, type, value','Click UPSERT RECORD'],apis:['GET /api/route53/zones','POST /api/route53/records']},
+    templates:{icon:'📦',title:'Template Marketplace',desc:'One-click infra from 5 templates: MEAN stack, EKS microservices, 3-tier VPC, static site CDN, serverless API.',inputs:[{n:'Template Parameters',t:'varies per template',r:true}],outputs:['Job ID','Deployment status'],steps:['Browse templates','Click a card','Fill parameter form','Click DEPLOY TEMPLATE'],apis:['GET /api/templates','POST /api/templates/:id/deploy']},
+    cicd:{icon:'🔄',title:'CI/CD Pipeline Generator',desc:'Generate GitHub Actions YAML for EC2 SSH deploy, EKS kubectl deploy, or S3 static site deploy.',inputs:[{n:'App Type',t:'Node.js/Python/Java/Go',r:true},{n:'Deploy Target',t:'EC2 / EKS / S3',r:true},{n:'Repo Name',t:'my-app',r:true}],outputs:['Complete .github/workflows/deploy.yml'],steps:['Select app type + target','Fill target-specific fields','Click GENERATE PIPELINE YAML','Copy to .github/workflows/'],apis:['POST /api/cicd/generate']},
+    logs:{icon:'📋',title:'CloudWatch Logs Viewer',desc:'Browse log groups and filter events by pattern. Click a group row to auto-fill the filter form.',inputs:[{n:'Log Group',t:'/aws/lambda/my-fn',r:true},{n:'Filter Pattern',t:'ERROR or { $.status = 500 }',r:false}],outputs:['Events with timestamps','Log group list'],steps:['Click LIST to load groups','Click row to select','Enter filter pattern','Click FILTER LOGS'],apis:['GET /api/logs/groups','POST /api/logs/filter']},
+    cost:{icon:'💰',title:'Cost Explorer',desc:'AWS billing last 30 days by service. Requires CostExplorer:GetCostAndUsage IAM permission.',inputs:[{n:'AWS Credentials',t:'on Home tab',r:true}],outputs:['Total USD (30 days)','Per-service breakdown with % bars'],steps:['Set credentials on Home','Click LOAD COSTS'],apis:['GET /api/cost/summary']},
+    audit:{icon:'🕵',title:'Audit Trail',desc:'SQLite log of every portal action: user, action, resource, status, timestamp.',inputs:[],outputs:['Action log table'],steps:['Click REFRESH','All actions auto-logged'],apis:['GET /api/audit/logs']},
+    cncflab:{icon:'🧪',title:'CNCF Lab',desc:'10-step Istio walkthrough + 10 CNCF tool tutorials (Argo CD, Kyverno, Prometheus, KEDA, Falco, OPA, Velero, Crossplane, Tekton, Flux). Each step shows architecture diagram, manifest, impact, and streams live kubectl output.',inputs:[{n:'kubectl configured',t:'kubeconfig must point to a cluster',r:true}],outputs:['Live kubectl/helm streaming output','Architecture ASCII diagrams','K8s YAML manifests per step','Before/after impact description'],steps:['Click Istio or CNCF Tools','For Istio: follow steps 1-10 in order','Click ▶ APPLY to execute each step','For CNCF tools: click tool card then run steps'],apis:['GET /api/cncf-lab/istio/steps','POST /api/cncf-lab/istio/apply/:id','GET /api/cncf-lab/tools','POST /api/cncf-lab/tools/:id/steps/:stepId']},
+    cfn:{icon:'☁',title:'CloudFormation',desc:'Deploy/update/delete stacks. Validate with dry-run. Template body or S3 URL.',inputs:[{n:'Stack Name',t:'my-stack',r:true},{n:'Template Body or S3 URL',t:'JSON/YAML or s3://...',r:true},{n:'Parameters',t:'KEY=VALUE per line',r:false}],outputs:['Stack status','Events table'],steps:['Enter name + template','Toggle Dry Run to validate','Click DEPLOY STACK','Click LIST to see stacks'],apis:['POST /api/cfn/deploy','GET /api/cfn/stacks']},
+    codebuild:{icon:'🔨',title:'CodeBuild',desc:'List projects, start builds with env var overrides, view build history.',inputs:[{n:'Project Name',t:'my-project',r:true},{n:'Source Version',t:'main/tag (optional)',r:false},{n:'Env Vars',t:'KEY=VALUE per line',r:false}],outputs:['Build ID','Build status and phase history'],steps:['Click LIST → SELECT project','Set source version if needed','Click START BUILD','Click BUILDS for history'],apis:['GET /api/codebuild/projects','POST /api/codebuild/build']},
+    pipeline:{icon:'🔄',title:'CodePipeline',desc:'List, start, stop pipelines. View stage-by-stage status.',inputs:[{n:'Pipeline Name',t:'my-pipeline',r:true}],outputs:['Pipeline list','Stage states','Execution ID'],steps:['Click LIST ALL','Click name to select','Click STATUS or START'],apis:['GET /api/pipeline/list','POST /api/pipeline/start']},
+    cache:{icon:'⚡',title:'ElastiCache',desc:'Create Redis/Memcached clusters. View existing clusters and replication groups.',inputs:[{n:'Cluster ID',t:'my-redis',r:true},{n:'Engine',t:'redis/memcached',r:true},{n:'Node Type',t:'cache.t3.micro',r:true}],outputs:['Creation confirmation','Cluster list'],steps:['Click LIST','Fill form','Click CREATE CLUSTER'],apis:['GET /api/cache/clusters','POST /api/cache/create']},
+    dynamo:{icon:'🗄',title:'DynamoDB',desc:'Create tables with PK/SK, scan data, delete tables.',inputs:[{n:'Table Name',t:'my-table',r:true},{n:'Partition Key + Type',t:'id / S',r:true},{n:'Sort Key',t:'optional',r:false}],outputs:['Table ARN + status','Scanned items as JSON'],steps:['Enter name + PK','Click CREATE TABLE','Click SCAN to view data'],apis:['GET /api/dynamo/tables','POST /api/dynamo/tables','POST /api/dynamo/scan']},
+    sqs:{icon:'📨',title:'SQS Queue Manager',desc:'Create standard/FIFO queues, send/receive messages.',inputs:[{n:'Queue Name',t:'my-queue (.fifo for FIFO)',r:true},{n:'Queue URL',t:'for send/receive',r:false},{n:'Message Body',t:'string or JSON',r:false}],outputs:['Queue URL','Message ID','Messages with receipt handles'],steps:['Enter name → CREATE QUEUE','SELECT a queue URL','Enter message → SEND','Click RECEIVE to poll'],apis:['POST /api/sqs/queues','POST /api/sqs/send','POST /api/sqs/receive']},
+    cdn:{icon:'🌐',title:'CloudFront Manager',desc:'List distributions and create cache invalidations.',inputs:[{n:'Distribution ID',t:'E1ABCDEF (click LIST)',r:true},{n:'Paths',t:'/* or /api/*',r:true}],outputs:['Distribution list with domain/status','Invalidation ID + status'],steps:['Click LIST','Click ID to select','Enter paths → INVALIDATE'],apis:['GET /api/cdn/distributions','POST /api/cdn/invalidate']},
+    beanstalk:{icon:'🫘',title:'Elastic Beanstalk',desc:'List environments with health. Restart app server, view events.',inputs:[{n:'Environment Name',t:'my-app-prod',r:true}],outputs:['Env list with health/URL','Restart confirmation','Events list'],steps:['Click LIST','Select env','Click RESTART APP or GET EVENTS'],apis:['GET /api/beanstalk/apps','POST /api/beanstalk/restart']},
+    ssm:{icon:'🔧',title:'SSM Parameter Store + Run Command',desc:'Store/retrieve parameters. Run shell commands on EC2 without SSH.',inputs:[{n:'Parameter Name',t:'/app/db/password',r:true},{n:'Value + Type',t:'String/SecureString',r:true},{n:'Instance IDs',t:'i-xxx (for Run Command)',r:false},{n:'Commands',t:'shell lines',r:false}],outputs:['Parameter version','Parameter value','SSM Command ID'],steps:['Enter name+value → PUT','Or GET VALUE','For Run Command: instance IDs + commands → RUN COMMAND'],apis:['POST /api/ssm/parameters','GET /api/ssm/parameters/:name','POST /api/ssm/run-command']},
+    alarms:{icon:'🔔',title:'CloudWatch Alarms',desc:'Create metric alarms for EC2/RDS/Lambda. View alarm states.',inputs:[{n:'Alarm Name',t:'High-CPU',r:true},{n:'Metric + Namespace',t:'CPUUtilization / AWS/EC2',r:true},{n:'Threshold',t:'80',r:true}],outputs:['Alarm created confirmation','Alarm list with OK/ALARM states'],steps:['Select metric + namespace','Enter name + threshold','Click CREATE ALARM','Click LIST to view states'],apis:['POST /api/alarms/create','GET /api/alarms/list']},
+    ecs:{icon:'🐋',title:'ECS / Fargate Manager',desc:'Manage clusters, register Fargate task definitions, run tasks, scale services.',inputs:[{n:'Cluster Name',t:'my-cluster',r:true},{n:'Container Image',t:'nginx:latest or ECR URI',r:true},{n:'CPU/Memory',t:'256/512 (Fargate units)',r:true},{n:'Subnets',t:'subnet-xxx,subnet-yyy',r:false}],outputs:['Cluster list','Task definition ARN + revision','Task ARN'],steps:['Click CLUSTERS → list services/tasks','Register task def form → REGISTER','Enter cluster+taskdef+subnets → RUN TASK','Scale: cluster+service+count → SCALE'],apis:['GET /api/ecs/clusters','POST /api/ecs/task-def','POST /api/ecs/run-task','POST /api/ecs/scale']},
+    stepfn:{icon:'🔀',title:'Step Functions',desc:'List state machines, start executions, track status.',inputs:[{n:'State Machine ARN',t:'arn:aws:states:... (click LIST)',r:true},{n:'Input JSON',t:'{}',r:false}],outputs:['Execution ARN','Execution status/output','Execution list'],steps:['Click LIST → SELECT','Paste JSON input → EXECUTE','Click LIST EXECUTIONS'],apis:['GET /api/stepfn/machines','POST /api/stepfn/execute']},
+    events:{icon:'⚡',title:'EventBridge',desc:'List buses/rules, create scheduled/pattern rules, put custom events.',inputs:[{n:'Rule Name',t:'my-rule',r:true},{n:'Schedule',t:'rate(5 minutes) or cron()',r:false},{n:'Event Pattern',t:'{"source":["aws.ec2"]}',r:false},{n:'Target ARN',t:'Lambda/SQS/SNS ARN',r:true}],outputs:['Rule ARN','Rule list','Event put result'],steps:['Click LIST','Enter name + schedule or pattern + target','Click CREATE RULE','Use Put Custom Event to test'],apis:['GET /api/events/rules','POST /api/events/rules','POST /api/events/put']},
+    kinesis:{icon:'📊',title:'Kinesis Streams',desc:'Create streams, put records, describe shards.',inputs:[{n:'Stream Name',t:'my-stream',r:true},{n:'Shard Count',t:'1',r:false},{n:'Data',t:'JSON or string',r:false},{n:'Partition Key',t:'user-123',r:false}],outputs:['Creation confirmation','Shard ID + sequence number','Stream details'],steps:['Click LIST','CREATE STREAM','Click name → PUT RECORD','Click DESCRIBE for details'],apis:['GET /api/kinesis/streams','POST /api/kinesis/streams','POST /api/kinesis/put']},
+    waf:{icon:'🛡',title:'WAF v2 Manager',desc:'List Web ACLs, create IP block sets, associate WAF with ALBs/CloudFront.',inputs:[{n:'Scope',t:'REGIONAL or CLOUDFRONT',r:true},{n:'IP Set Name + Addresses',t:'name + CIDR per line',r:false},{n:'WAF ACL ARN + Resource ARN',t:'for association',r:false}],outputs:['ACL list','IP Set ARN','Association confirmation'],steps:['Click LIST ACLs','Create IP set','Paste ACL ARN + resource ARN → ASSOCIATE WAF'],apis:['GET /api/waf/acls','POST /api/waf/ip-sets','POST /api/waf/associate']},
+    backup:{icon:'💾',title:'AWS Backup',desc:'Create backup plans with schedules, run on-demand backups, view job history.',inputs:[{n:'Plan Name',t:'daily-backup',r:true},{n:'Schedule (cron)',t:'cron(0 5 ? * * *)',r:false},{n:'Retention (days)',t:'30',r:false},{n:'Resource ARN',t:'arn:aws:ec2:...:volume/vol-xxx',r:false}],outputs:['Plan ID/ARN','Job ID','Job history'],steps:['Enter plan → CREATE PLAN','Paste resource ARN → START BACKUP NOW','Click PLANS or JOBS to view'],apis:['POST /api/backup/plans','POST /api/backup/start','GET /api/backup/jobs']},
+    awsconfig:{icon:'📐',title:'AWS Config',desc:'Compliance summary and rule listing for Config rules.',inputs:[{n:'AWS Credentials',t:'on Home tab',r:true}],outputs:['Compliant/non-compliant counts','Rule list with compliance state'],steps:['Click COMPLIANCE for summary','Click LIST RULES for all rules'],apis:['GET /api/awsconfig/compliance','GET /api/awsconfig/rules']},
+    apigw:{icon:'🔌',title:'API Gateway',desc:'List REST APIs, deploy to stages, manage API keys.',inputs:[{n:'REST API ID',t:'abc1234 (click LIST)',r:true},{n:'Stage Name',t:'prod/dev',r:true},{n:'API Key Name',t:'my-key',r:false}],outputs:['API list','Stage list with invoke URLs','Deployment ID + URL','Key value after creation'],steps:['Click LIST → click row to select ID','Enter stage → DEPLOY','LIST in API Keys section'],apis:['GET /api/apigw/apis','POST /api/apigw/deploy','POST /api/apigw/keys']},
+    opensearch:{icon:'🔍',title:'OpenSearch Manager',desc:'Create/describe/delete OpenSearch domains. Encryption and HTTPS enforced by default.',inputs:[{n:'Domain Name',t:'my-search',r:true},{n:'Engine Version',t:'OpenSearch_2.11',r:true},{n:'Instance Type',t:'t3.small.search',r:true},{n:'EBS Size (GB)',t:'10',r:false}],outputs:['Domain creation initiated (15-30 min)','Domain details: endpoint, engine, instance count'],steps:['Enter name + version + type','Click CREATE DOMAIN','Click LIST to check status','Click DESCRIBE for details'],apis:['POST /api/opensearch/create','GET /api/opensearch/domains']},
+    glue:{icon:'🧬',title:'Glue ETL Manager',desc:'Browse Data Catalog, run jobs, start crawlers.',inputs:[{n:'None required',t:'Browse buttons populate forms',r:false}],outputs:['Database + table list','Job run ID + history','Crawler status'],steps:['Click DATABASES → click row for tables','Click JOBS → RUN or RUNS','Click CRAWLERS → START'],apis:['GET /api/glue/databases','GET /api/glue/jobs','POST /api/glue/jobs/run','GET /api/glue/crawlers','POST /api/glue/crawlers/start']}
+  };
+
+  const info = {
+    currentTab: 'home',
+    show() {
+      const d = TAB_INFO[this.currentTab];
+      const overlay = document.getElementById('info-modal-overlay');
+      document.getElementById('info-modal-icon').textContent = d ? d.icon : 'ℹ';
+      document.getElementById('info-modal-title').textContent = d ? d.title.toUpperCase() : this.currentTab.toUpperCase();
+      if (!d) { document.getElementById('info-modal-body').innerHTML = '<p style="color:var(--text3);padding:20px">Documentation coming soon.</p>'; overlay.classList.add('visible'); return; }
+      const inp = (d.inputs||[]).map(i => `<div class="info-item"><div class="info-item-label">${escHtml(i.n)} ${i.r?'<span style="color:var(--red)">*</span>':'<span style="color:var(--text3)">(opt)</span>'}</div><div class="info-item-value" style="color:var(--text3)">${escHtml(i.t)}</div></div>`).join('');
+      const out = (d.outputs||[]).map(o => `<div class="info-item"><span class="info-badge info-badge-output">→</span> <span style="font-size:12px;color:var(--text)">${escHtml(o)}</span></div>`).join('');
+      const steps = (d.steps||[]).map(s => `<li>${escHtml(s)}</li>`).join('');
+      const apis = (d.apis||[]).map(a => { const p=a.split(' '); const m=['GET','POST','PUT','DELETE','WS'].includes(p[0]); return `<div class="info-api-row">${m?`<span class="info-method">${escHtml(p[0])}</span><span class="info-path">${escHtml(p.slice(1).join(' '))}</span>`:`<span class="info-path">${escHtml(a)}</span>`}</div>`; }).join('');
+      document.getElementById('info-modal-body').innerHTML = `
+        <div class="info-section"><div class="info-section-title">What it does</div><div class="info-desc">${escHtml(d.desc)}</div></div>
+        ${inp?`<div class="info-section"><div class="info-section-title">Inputs</div><div class="info-grid">${inp}</div></div>`:''}
+        ${out?`<div class="info-section"><div class="info-section-title">Outputs</div><div class="info-grid">${out}</div></div>`:''}
+        ${steps?`<div class="info-section"><div class="info-section-title">How to use</div><ol class="info-steps">${steps}</ol></div>`:''}
+        ${apis?`<div class="info-section"><div class="info-section-title">API Endpoints</div>${apis}</div>`:''}`;
+      overlay.classList.add('visible');
+    },
+    close() { document.getElementById('info-modal-overlay').classList.remove('visible'); },
+    setTab(t) { this.currentTab = t; const b = document.getElementById('info-btn'); if(b) b.style.color = TAB_INFO[t]?'var(--green)':'var(--text3)'; }
+  };
+
   // ===== INIT (runs after all modules are declared) =====
   function init() {
     document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -1705,5 +1963,5 @@ const Portal = (() => {
     init();
   }
 
-  return { logout, loadResources, clearCreds, switchTab, toggleConsole, clearConsole, ec2, eks, asg, terminal, nginx, docker, k8s, helm, s3, iam, secrets, lambda, dns, templates, cicd, cwlogs, cost, audit, cfn, codebuild, pipeline, cache, dynamo, sqs, cdn, beanstalk, ssm, alarms, ecs, stepfn, events, kinesis, waf, backup, awsconfig, apigw, opensearch, glue, ec2pkg };
+  return { logout, loadResources, clearCreds, switchTab, toggleConsole, clearConsole, ec2, eks, asg, terminal, nginx, docker, k8s, helm, s3, iam, secrets, lambda, dns, templates, cicd, cwlogs, cost, audit, cfn, codebuild, pipeline, cache, dynamo, sqs, cdn, beanstalk, ssm, alarms, ecs, stepfn, events, kinesis, waf, backup, awsconfig, apigw, opensearch, glue, ec2pkg, cncflab, info };
 })();

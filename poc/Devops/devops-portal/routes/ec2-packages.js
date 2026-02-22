@@ -84,9 +84,9 @@ echo "[DONE] $(java -version 2>&1 | head -1)"` },
 set -e
 if command -v go &>/dev/null; then echo "[SKIP] $(go version)"; exit 0; fi
 GO_VER="1.22.3"
-curl -sLO "https://go.dev/dl/go${GO_VER}.linux-amd64.tar.gz"
-sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf "go${GO_VER}.linux-amd64.tar.gz"
-rm "go${GO_VER}.linux-amd64.tar.gz"
+curl -sLO "https://go.dev/dl/go\${GO_VER}.linux-amd64.tar.gz"
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf "go\${GO_VER}.linux-amd64.tar.gz"
+rm "go\${GO_VER}.linux-amd64.tar.gz"
 echo 'export PATH=$PATH:/usr/local/go/bin' | sudo tee /etc/profile.d/go.sh
 export PATH=$PATH:/usr/local/go/bin
 echo "[DONE] $(go version)"` },
@@ -103,7 +103,7 @@ if command -v docker &>/dev/null; then echo "[SKIP] $(docker --version)"; else
   sudo usermod -aG docker $(whoami) 2>/dev/null || true
 fi
 COMPOSE_VER="v2.27.0"
-sudo curl -sL "https://github.com/docker/compose/releases/download/${COMPOSE_VER}/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+sudo curl -sL "https://github.com/docker/compose/releases/download/\${COMPOSE_VER}/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 echo "[DONE] $(docker --version) | Compose: $(docker-compose --version)"` },
 
@@ -111,7 +111,7 @@ echo "[DONE] $(docker --version) | Compose: $(docker-compose --version)"` },
 set -e
 if command -v kubectl &>/dev/null; then echo "[SKIP] kubectl installed"; exit 0; fi
 KVER=$(curl -sL https://dl.k8s.io/release/stable.txt)
-curl -sLO "https://dl.k8s.io/release/${KVER}/bin/linux/amd64/kubectl"
+curl -sLO "https://dl.k8s.io/release/\${KVER}/bin/linux/amd64/kubectl"
 sudo install -m 0755 kubectl /usr/local/bin/kubectl && rm kubectl
 sudo git clone https://github.com/ahmetb/kubectx /opt/kubectx --quiet 2>/dev/null || true
 sudo ln -sf /opt/kubectx/kubectx /usr/local/bin/kubectx 2>/dev/null || true
@@ -142,7 +142,7 @@ echo "[DONE] eksctl $(eksctl version)"` },
 set -e
 if command -v k9s &>/dev/null; then echo "[SKIP] k9s installed"; exit 0; fi
 K9S_VER=$(curl -sI https://github.com/derailed/k9s/releases/latest | grep -i location | sed 's|.*/||' | tr -d '\r')
-curl -sLO "https://github.com/derailed/k9s/releases/download/${K9S_VER}/k9s_Linux_amd64.tar.gz"
+curl -sLO "https://github.com/derailed/k9s/releases/download/\${K9S_VER}/k9s_Linux_amd64.tar.gz"
 tar xzf k9s_Linux_amd64.tar.gz k9s && sudo mv k9s /usr/local/bin/ && rm k9s_Linux_amd64.tar.gz
 echo "[DONE] k9s installed"` },
 
@@ -207,7 +207,7 @@ echo "[DONE] $(gitlab-runner --version | head -1)"` },
 set -e
 if command -v argocd &>/dev/null; then echo "[SKIP] argocd installed"; exit 0; fi
 ARGOCD_VER=$(curl -sI https://github.com/argoproj/argo-cd/releases/latest | grep -i location | sed 's|.*/||' | tr -d '\r')
-curl -sLO "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VER}/argocd-linux-amd64"
+curl -sLO "https://github.com/argoproj/argo-cd/releases/download/\${ARGOCD_VER}/argocd-linux-amd64"
 sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd && rm argocd-linux-amd64
 echo "[DONE] argocd installed"` },
 
@@ -232,10 +232,10 @@ echo "[DONE] Azure CLI installed"` },
 set -e
 if command -v node_exporter &>/dev/null; then echo "[SKIP] node_exporter installed"; exit 0; fi
 NE_VER="1.8.1"
-curl -sLO "https://github.com/prometheus/node_exporter/releases/download/v${NE_VER}/node_exporter-${NE_VER}.linux-amd64.tar.gz"
-tar xzf "node_exporter-${NE_VER}.linux-amd64.tar.gz"
-sudo mv "node_exporter-${NE_VER}.linux-amd64/node_exporter" /usr/local/bin/
-rm -rf "node_exporter-${NE_VER}.linux-amd64"*
+curl -sLO "https://github.com/prometheus/node_exporter/releases/download/v\${NE_VER}/node_exporter-\${NE_VER}.linux-amd64.tar.gz"
+tar xzf "node_exporter-\${NE_VER}.linux-amd64.tar.gz"
+sudo mv "node_exporter-\${NE_VER}.linux-amd64/node_exporter" /usr/local/bin/
+rm -rf "node_exporter-\${NE_VER}.linux-amd64"*
 sudo useradd -rs /bin/false node_exporter 2>/dev/null || true
 sudo tee /etc/systemd/system/node_exporter.service > /dev/null << 'SVC'
 [Unit]
@@ -272,7 +272,7 @@ if command -v apt-get &>/dev/null; then
   sudo apt-get update && sudo apt-get install -y trivy
 else
   TRIVY_VER=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/v//')
-  wget -qO- "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VER}/trivy_${TRIVY_VER}_Linux-64bit.tar.gz" | sudo tar xzf - -C /usr/local/bin trivy
+  wget -qO- "https://github.com/aquasecurity/trivy/releases/download/v\${TRIVY_VER}/trivy_\${TRIVY_VER}_Linux-64bit.tar.gz" | sudo tar xzf - -C /usr/local/bin trivy
 fi
 echo "[DONE] $(trivy --version)"` },
 
@@ -328,8 +328,8 @@ set -e
 if command -v istioctl &>/dev/null; then echo "[SKIP] istioctl installed"; exit 0; fi
 curl -sL https://istio.io/downloadIstio | sh -
 ISTIO_DIR=$(ls -d istio-* 2>/dev/null | head -1)
-sudo mv "${ISTIO_DIR}/bin/istioctl" /usr/local/bin/
-rm -rf "${ISTIO_DIR}"
+sudo mv "\${ISTIO_DIR}/bin/istioctl" /usr/local/bin/
+rm -rf "\${ISTIO_DIR}"
 echo "[DONE] istioctl installed"` },
 
   'fluxcd': { name: 'Flux CD CLI', category: 'cncf', script: `#!/bin/bash
@@ -342,7 +342,7 @@ echo "[DONE] $(flux --version)"` },
 set -e
 if command -v tkn &>/dev/null; then echo "[SKIP] tkn installed"; exit 0; fi
 TKN_VER=$(curl -sI https://github.com/tektoncd/cli/releases/latest | grep -i location | sed 's|.*/||' | tr -d '\r')
-curl -sLO "https://github.com/tektoncd/cli/releases/download/${TKN_VER}/tkn_\${TKN_VER#v}_Linux_x86_64.tar.gz"
+curl -sLO "https://github.com/tektoncd/cli/releases/download/\${TKN_VER}/tkn_\${TKN_VER#v}_Linux_x86_64.tar.gz"
 sudo tar xzf "tkn_\${TKN_VER#v}_Linux_x86_64.tar.gz" -C /usr/local/bin tkn
 rm -f "tkn_\${TKN_VER#v}_Linux_x86_64.tar.gz"
 echo "[DONE] tkn installed"` },
@@ -351,10 +351,10 @@ echo "[DONE] tkn installed"` },
 set -e
 if command -v velero &>/dev/null; then echo "[SKIP] velero installed"; exit 0; fi
 VELERO_VER=$(curl -sI https://github.com/vmware-tanzu/velero/releases/latest | grep -i location | sed 's|.*/||' | tr -d '\r')
-curl -sLO "https://github.com/vmware-tanzu/velero/releases/download/${VELERO_VER}/velero-${VELERO_VER}-linux-amd64.tar.gz"
-tar xzf "velero-${VELERO_VER}-linux-amd64.tar.gz"
-sudo mv "velero-${VELERO_VER}-linux-amd64/velero" /usr/local/bin/
-rm -rf "velero-${VELERO_VER}-linux-amd64"*
+curl -sLO "https://github.com/vmware-tanzu/velero/releases/download/\${VELERO_VER}/velero-\${VELERO_VER}-linux-amd64.tar.gz"
+tar xzf "velero-\${VELERO_VER}-linux-amd64.tar.gz"
+sudo mv "velero-\${VELERO_VER}-linux-amd64/velero" /usr/local/bin/
+rm -rf "velero-\${VELERO_VER}-linux-amd64"*
 echo "[DONE] velero installed"` },
 
   'kustomize': { name: 'Kustomize', category: 'cncf', script: `#!/bin/bash
@@ -386,7 +386,7 @@ if ! command -v docker &>/dev/null; then
   sudo systemctl start docker && sudo systemctl enable docker && sudo usermod -aG docker $(whoami) 2>/dev/null || true
 fi
 echo "Docker: $(docker --version)"
-if ! command -v kubectl &>/dev/null; then KVER=$(curl -sL https://dl.k8s.io/release/stable.txt); curl -sLO "https://dl.k8s.io/release/${KVER}/bin/linux/amd64/kubectl"; sudo install -m 0755 kubectl /usr/local/bin/kubectl && rm kubectl; fi
+if ! command -v kubectl &>/dev/null; then KVER=$(curl -sL https://dl.k8s.io/release/stable.txt); curl -sLO "https://dl.k8s.io/release/\${KVER}/bin/linux/amd64/kubectl"; sudo install -m 0755 kubectl /usr/local/bin/kubectl && rm kubectl; fi
 echo "kubectl: installed"
 if ! command -v helm &>/dev/null; then curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash; fi
 echo "Helm: $(helm version --short)"
